@@ -1138,6 +1138,7 @@ function showTeacherLogin(){
 
 /* ---------------- Admin Dashboard ---------------- */
 let adminTab = "home";
+let teacherTab = "home";
 function renderAdmin(){
   app.innerHTML = `
     <div class="admin-layout">
@@ -3733,6 +3734,39 @@ function renderTeacher(){
   const today = todayStr();
   const groupStudentIds = new Set(studs.map(s=>s.id));
   const activeExcuses = allExcuses().filter(e=> groupStudentIds.has(e.studentId) && e.to >= today);
+  const myMessages = DB.messages.filter(m=>!m.groupId || m.groupId===g.id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  const unreadCount = myMessages.filter(m=>m.createdAt > lastSeen).length;
+  const curYM = today.slice(0,7);
+  const missingSurahCount = studs.filter(s => !s.currentSurah || (s.surahUpdatedAt||"").slice(0,7) !== curYM).length;
+
+  app.innerHTML = `
+    <div class="admin-layout">
+      <div class="admin-sidebar no-print">
+        <div class="tab ${teacherTab==='home'?'active':''}" data-tt="home">🏠 الرئيسية</div>
+        <div class="tab ${teacherTab==='attendance'?'active':''}" data-tt="attendance">📋 تسجيل الحضور</div>
+        <div class="tab ${teacherTab==='surah'?'active':''}" data-tt="surah">📖 السورة / المرحلة ${missingSurahCount?`<span class="badge" style="background:var(--error);font-size:10px;">${missingSurahCount}</span>`:""}</div>
+        <div class="tab ${teacherTab==='exam'?'active':''}" data-tt="exam">📝 اختبار الفصل</div>
+        <div class="tab ${teacherTab==='official'?'active':''}" data-tt="official">🏛️ نتائج الامتحانات الإدارية</div>
+        <div class="tab ${teacherTab==='inbox'?'active':''}" data-tt="inbox">📩 رسائل الإدارة ${unreadCount?`<span class="badge" style="background:var(--error);font-size:10px;">${unreadCount}</span>`:""}</div>
+        <div class="tab ${teacherTab==='note'?'active':''}" data-tt="note">📝 ملاحظة عن طالب</div>
+      </div>
+      <div class="admin-content" id="teacherContent"></div>
+    </div>`;
+  document.querySelectorAll(".tab").forEach(t=>{
+    t.onclick = () => { teacherTab = t.dataset.tt; renderTeacher(); };
+  });
+  const c = document.getElementById("teacherContent");
+  if(teacherTab==="home") return renderTeacherHome(c, g, studs, activeExcuses);
+  if(teacherTab==="attendance") return renderTeacherAttendance(c, g, studs);
+  if(teacherTab==="surah") return renderTeacherSurah(c, g, studs);
+  if(teacherTab==="exam") return renderTeacherExam(c, g, studs);
+  if(teacherTab==="official") return renderTeacherOfficial(c, g, studs);
+  if(teacherTab==="inbox") return renderTeacherInbox(c, g, myMessages);
+  if(teacherTab==="note") return renderTeacherNote(c, g, studs);
+}
+
+function renderTeacherHome(c, g, studs, activeExcuses){
+  const today = todayStr();
   const monthNames = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
   const groupAnnouncements = DB.monthlyAnnouncements.filter(a=>a.groupId===g.id).sort((a,b)=> (b.year-a.year) || (b.month-a.month));
   const announceBanner = groupAnnouncements.length ? `
@@ -3745,55 +3779,6 @@ function renderTeacher(){
           <span style="color:var(--muted);font-size:13px;">(المجموع الإيجابي: ${a.positive})</span>
         </p>`).join("")}
     </div>` : "";
-
-  const curYM = today.slice(0,7);
-  const isSighar = g.curriculum === "sighar";
-  const stageWord = isSighar ? "المرحلة" : "السورة";
-  const missingSurahStuds = studs.filter(s => !s.currentSurah || (s.surahUpdatedAt||"").slice(0,7) !== curYM);
-  const surahReminder = missingSurahStuds.length ? `
-    <div class="card" style="border-right:5px solid var(--error);">
-      <h2>📖 تذكير: تحديث ${stageWord} الطلاب لهذا الشهر</h2>
-      <p style="color:var(--muted);font-size:13px;">${missingSurahStuds.length} طالب بحاجة لتحديد ${stageWord} الحالية لهذا الشهر. حدّثها من القسم أدناه.</p>
-    </div>` : "";
-  const surahOptionsList = isSighar ? MANHAJ_SIGHAR : SURAHS;
-  const surahOptions = surahOptionsList.map(n=>`<option>${n}</option>`).join("");
-  const surahCard = `
-    <div class="card">
-      <h2>📖 ${stageWord} الطلاب الحالية — ${monthNames[new Date().getMonth()]} ${new Date().getFullYear()}</h2>
-      <table>
-        <tr><th>الرقم</th><th>الاسم</th><th>${stageWord} الحالية</th><th>تحديث</th></tr>
-        ${studs.map(s=>{
-          const upToDate = s.currentSurah && (s.surahUpdatedAt||"").slice(0,7) === curYM;
-          return `<tr>
-            <td style="font-weight:bold;color:var(--green-d)">${s.code}</td>
-            <td class="name-cell">${s.name} <span style="font-size:11px;color:var(--muted)">(${studentWord(s)})</span> ${upToDate?'<span style="color:var(--present);font-size:11px;">✓ محدّثة</span>':'<span style="color:var(--error);font-size:11px;">بحاجة تحديث</span>'}</td>
-            <td>${s.currentSurah||'<span style="color:var(--muted);font-size:12px;">لم تُحدَّد</span>'}</td>
-            <td>
-              <select data-surah-sid="${s.id}" style="min-width:150px;">
-                <option value="">اختر ${stageWord}...</option>
-                ${surahOptions}
-              </select>
-            </td>
-          </tr>`;
-        }).join("") || `<tr><td colspan="4" style="color:var(--muted)">لا يوجد طلاب/طالبات</td></tr>`}
-      </table>
-    </div>`;
-  const myMessages = DB.messages.filter(m=>!m.groupId || m.groupId===g.id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
-  const unreadCount = myMessages.filter(m=>m.createdAt > lastSeen).length;
-  const inboxCard = `
-    <div class="card">
-      <h2>📥 رسائل الإدارة ${unreadCount ? `<span class="badge" style="background:var(--error);">${unreadCount} جديدة</span>` : ""}</h2>
-      ${myMessages.length ? myMessages.map(m=>{
-        const isNew = m.createdAt > lastSeen;
-        const dateTxt = new Date(m.createdAt).toLocaleString("ar-EG");
-        return `<div style="padding:8px 0;border-bottom:1px solid var(--border);${isNew?'background:#FDECEA;':''}">
-          <span style="color:var(--muted);font-size:11px;">${dateTxt}${!m.groupId?' · بث عام':''}</span>
-          <p style="margin:4px 0 0;">${m.text}</p>
-        </div>`;
-      }).join("") : `<p style="color:var(--muted);font-size:13px;">لا توجد رسائل من الإدارة بعد</p>`}
-    </div>`;
-  DB.lastSeen[g.id] = new Date().toISOString();
-  saveDB(DB);
   const excuseBanner = activeExcuses.length ? `
     <div class="card" style="border-right:5px solid var(--gold);">
       <h2>📝 إشعارات الأعذار</h2>
@@ -3808,73 +3793,20 @@ function renderTeacher(){
       }).join("")}
     </div>` : "";
 
-  const NOTE_CATS = ["سلوك سيئ","غياب متكرر","ضعف في التسميع","أخرى"];
-  const noteCard = `
+  c.innerHTML = `
     <div class="card">
-      <h2>📋 كتابة ملاحظة عن طالب</h2>
-      <p style="color:var(--muted);font-size:13px;">تصل الملاحظة مباشرة إلى لوحة الإدارة.</p>
-      <div class="row">
-        <div><label>الطالب/ة</label><select id="noteStudent">${studs.map(s=>`<option value="${s.id}">${s.code} — ${s.name} (${studentWord(s)})</option>`).join("") || "<option value=''>لا يوجد طلاب/طالبات</option>"}</select></div>
-        <div><label>نوع الملاحظة</label><select id="noteCategory">${NOTE_CATS.map(cat=>`<option>${cat}</option>`).join("")}</select></div>
+      <h2>مرحباً بك، ${g.teacherName||"معلم/ة"} 👋</h2>
+      <div class="stat-cards">
+        <div class="stat"><div class="n" style="color:var(--green-d)">${studs.length}</div><div class="l">عدد الطلاب — ${g.name}</div></div>
+        <div class="stat"><div class="n" style="color:var(--error)">${activeExcuses.length}</div><div class="l">أعذار نشطة</div></div>
       </div>
-      <div style="margin-top:10px;">
-        <label>تفاصيل الملاحظة</label>
-        <input id="noteText" style="width:100%" placeholder="اكتب وصف الملاحظة...">
-      </div>
-      <button class="btn-green" style="margin-top:10px;" id="noteSaveBtn">📤 إرسال إلى الإدارة</button>
-      <div id="noteMsg"></div>
-    </div>`;
-
-  const myExams = allExams().filter(ex=>ex.groupId===g.id && ex.type==="فصلي").sort((a,b)=>b.date.localeCompare(a.date));
-  const examCard = `
-    <div class="card">
-      <h2>📝 اختبار الفصل — ${g.name}</h2>
-      <div class="row">
-        <div><label>عنوان الاختبار</label><input id="tExamTitle" placeholder="مثال: اختبار مراجعة أسبوعية"></div>
-        <div><label>المادة/الموضوع</label><input id="tExamSubject" placeholder="مثال: حفظ القرآن"></div>
-        <div><label>التاريخ</label><input type="date" id="tExamDate" value="${todayStr()}"></div>
-        <div><label>الدرجة الكاملة</label><input type="number" id="tExamMaxScore" value="100"></div>
-        <div style="align-self:flex-end;"><button class="btn-green" id="tAddExamBtn">+ إنشاء</button></div>
-      </div>
-      <div id="tExamMsg"></div>
-      <div id="tExamsList" style="margin-top:10px;">
-        ${myExams.length ? myExams.map(ex=>{
-          const cnt = allExamResults().filter(r=>r.examId===ex.id).length;
-          return `<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--border);padding:6px 0;">
-            <span>${ex.title} <span style="color:var(--muted);font-size:12px;">— ${ex.date} (${cnt}/${studs.length})</span></span>
-            <button class="btn-outline btn-sm" data-t-enter-exam="${ex.id}">📝 إدخال النتائج</button>
-          </div>`;
-        }).join("") : `<p style="color:var(--muted);font-size:13px;">لا توجد اختبارات بعد لهذا الفصل.</p>`}
-      </div>
-      <div id="tExamResultsWrap"></div>
-    </div>`;
-
-  const officialResults = studs.flatMap(s => resultsFor(s.id).filter(r=>r.examType==="إداري" && r.published!==false).map(r=>({...r, studentName:s.name, studentCode:s.code})));
-  const officialResultsCard = officialResults.length ? `
-    <div class="card">
-      <h2>🏛️ نتائج الامتحانات الإدارية المنشورة — ${g.name}</h2>
-      <table>
-        <tr><th>الطالب/ة</th><th>الامتحان</th><th>التاريخ</th><th>الدرجة</th><th>التقدير</th></tr>
-        ${officialResults.sort((a,b)=>b.date.localeCompare(a.date)).map(r=>`
-          <tr>
-            <td class="name-cell">${r.studentCode} — ${r.studentName}</td>
-            <td>${r.examTitle}</td>
-            <td>${r.date}</td>
-            <td>${r.score}/${r.maxScore} (${r.percentage}%)</td>
-            <td style="color:${gradeColor(r.grade)};font-weight:bold;">${r.grade}</td>
-          </tr>`).join("")}
-      </table>
-    </div>` : "";
-
-  app.innerHTML = `
+    </div>
     ${excuseBanner}
-    ${announceBanner}
-    ${surahReminder}
-    ${inboxCard}
-    ${surahCard}
-    ${examCard}
-    ${officialResultsCard}
-    ${noteCard}
+    ${announceBanner}`;
+}
+
+function renderTeacherAttendance(c, g, studs){
+  c.innerHTML = `
     <div class="card">
       <h2>تسجيل الحضور — ${g.name}</h2>
       <p style="color:var(--muted);font-size:13px;margin-top:-6px;">المعلم/ة: <strong style="color:var(--green-d)">${g.teacherName || "—"}</strong></p>
@@ -3903,8 +3835,8 @@ function renderTeacher(){
     </div>`;
 
   function isWeekend(date){
-    const dow = new Date(date+"T00:00:00").getDay(); // 0=Sun...4=Thu,5=Fri,6=Sat
-    return dow===4 || dow===5; // shifted night-date: Thursday & Friday = center's weekend
+    const dow = new Date(date+"T00:00:00").getDay();
+    return dow===4 || dow===5;
   }
   function drawTable(){
     const date = document.getElementById("tDate").value;
@@ -3941,16 +3873,6 @@ function renderTeacher(){
       };
     });
   }
-  document.querySelectorAll("[data-surah-sid]").forEach(sel=>{
-    sel.onchange = () => {
-      if(!sel.value) return;
-      const s = DB.students.find(x=>x.id===sel.dataset.surahSid);
-      s.currentSurah = sel.value;
-      s.surahUpdatedAt = new Date().toISOString();
-      saveDB(DB);
-      renderTeacher();
-    };
-  });
   document.getElementById("tDate").onchange = drawTable;
   function shiftTDate(delta){
     const input = document.getElementById("tDate");
@@ -3962,6 +3884,81 @@ function renderTeacher(){
   document.getElementById("tDateMinus").onclick = () => shiftTDate(-1);
   document.getElementById("tDatePlus").onclick = () => shiftTDate(1);
   document.getElementById("tSearch").oninput = drawTable;
+  document.getElementById("finalizeBtn").onclick = () => {
+    const date = document.getElementById("tDate").value;
+    showConfirm("بعد التثبيت لن تتمكن من تعديل حضور هذا اليوم إلا عبر الإدارة. هل تريد المتابعة؟", () => {
+      setLock(date, g.id, true);
+      drawTable();
+    });
+  };
+  drawTable();
+}
+
+function renderTeacherSurah(c, g, studs){
+  const monthNames = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+  const curYM = todayStr().slice(0,7);
+  const isSighar = g.curriculum === "sighar";
+  const stageWord = isSighar ? "المرحلة" : "السورة";
+  const surahOptionsList = isSighar ? MANHAJ_SIGHAR : SURAHS;
+  const surahOptions = surahOptionsList.map(n=>`<option>${n}</option>`).join("");
+  c.innerHTML = `
+    <div class="card">
+      <h2>📖 ${stageWord} الطلاب الحالية — ${monthNames[new Date().getMonth()]} ${new Date().getFullYear()}</h2>
+      <table>
+        <tr><th>الرقم</th><th>الاسم</th><th>${stageWord} الحالية</th><th>تحديث</th></tr>
+        ${studs.map(s=>{
+          const upToDate = s.currentSurah && (s.surahUpdatedAt||"").slice(0,7) === curYM;
+          return `<tr>
+            <td style="font-weight:bold;color:var(--green-d)">${s.code}</td>
+            <td class="name-cell">${s.name} <span style="font-size:11px;color:var(--muted)">(${studentWord(s)})</span> ${upToDate?'<span style="color:var(--present);font-size:11px;">✓ محدّثة</span>':'<span style="color:var(--error);font-size:11px;">بحاجة تحديث</span>'}</td>
+            <td>${s.currentSurah||'<span style="color:var(--muted);font-size:12px;">لم تُحدَّد</span>'}</td>
+            <td>
+              <select data-surah-sid="${s.id}" style="min-width:150px;">
+                <option value="">اختر ${stageWord}...</option>
+                ${surahOptions}
+              </select>
+            </td>
+          </tr>`;
+        }).join("") || `<tr><td colspan="4" style="color:var(--muted)">لا يوجد طلاب/طالبات</td></tr>`}
+      </table>
+    </div>`;
+  document.querySelectorAll("[data-surah-sid]").forEach(sel=>{
+    sel.onchange = () => {
+      if(!sel.value) return;
+      const s = DB.students.find(x=>x.id===sel.dataset.surahSid);
+      s.currentSurah = sel.value;
+      s.surahUpdatedAt = new Date().toISOString();
+      saveDB(DB);
+      renderTeacherSurah(c, g, studs);
+    };
+  });
+}
+
+function renderTeacherExam(c, g, studs){
+  const myExams = allExams().filter(ex=>ex.groupId===g.id && ex.type==="فصلي").sort((a,b)=>b.date.localeCompare(a.date));
+  c.innerHTML = `
+    <div class="card">
+      <h2>📝 اختبار الفصل — ${g.name}</h2>
+      <div class="row">
+        <div><label>عنوان الاختبار</label><input id="tExamTitle" placeholder="مثال: اختبار مراجعة أسبوعية"></div>
+        <div><label>المادة/الموضوع</label><input id="tExamSubject" placeholder="مثال: حفظ القرآن"></div>
+        <div><label>التاريخ</label><input type="date" id="tExamDate" value="${todayStr()}"></div>
+        <div><label>الدرجة الكاملة</label><input type="number" id="tExamMaxScore" value="100"></div>
+        <div style="align-self:flex-end;"><button class="btn-green" id="tAddExamBtn">+ إنشاء</button></div>
+      </div>
+      <div id="tExamMsg"></div>
+      <div id="tExamsList" style="margin-top:10px;">
+        ${myExams.length ? myExams.map(ex=>{
+          const cnt = allExamResults().filter(r=>r.examId===ex.id).length;
+          return `<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--border);padding:6px 0;">
+            <span>${ex.title} <span style="color:var(--muted);font-size:12px;">— ${ex.date} (${cnt}/${studs.length})</span></span>
+            <button class="btn-outline btn-sm" data-t-enter-exam="${ex.id}">📝 إدخال النتائج</button>
+          </div>`;
+        }).join("") : `<p style="color:var(--muted);font-size:13px;">لا توجد اختبارات بعد لهذا الفصل.</p>`}
+      </div>
+      <div id="tExamResultsWrap"></div>
+    </div>`;
+
   document.getElementById("tAddExamBtn").onclick = () => {
     const title = document.getElementById("tExamTitle").value.trim();
     const subject = document.getElementById("tExamSubject").value.trim();
@@ -3969,11 +3966,11 @@ function renderTeacher(){
     const maxScore = parseInt(document.getElementById("tExamMaxScore").value) || 100;
     const msg = document.getElementById("tExamMsg");
     if(!title){ msg.innerHTML = `<div class="msg err">أدخل عنوان الاختبار</div>`; return; }
-    const exam = {id:uid(), title, type:"فصلي", groupId:g.id, subject, date, maxScore, createdBy:"teacher", createdAt:new Date().toISOString()};
+    const exam = {id:uid(), title, type:"فصلي", groupId:g.id, subject, date, maxScore, createdBy:"teacher", createdAt:new Date().toISOString(), published:true};
     addExam(exam);
     saveDB(DB);
     msg.innerHTML = `<div class="msg ok">تم إنشاء الاختبار</div>`;
-    renderTeacher();
+    renderTeacherExam(c, g, studs);
   };
   document.querySelectorAll("[data-t-enter-exam]").forEach(btn=>{
     btn.onclick = () => {
@@ -4020,28 +4017,74 @@ function renderTeacher(){
       });
     };
   });
-  if(document.getElementById("noteSaveBtn")){
-    document.getElementById("noteSaveBtn").onclick = () => {
-      const sid = document.getElementById("noteStudent").value;
-      const category = document.getElementById("noteCategory").value;
-      const text = document.getElementById("noteText").value.trim();
-      const msg = document.getElementById("noteMsg");
-      if(!sid){ msg.innerHTML = `<div class="msg err">اختر طالباً</div>`; return; }
-      if(!text){ msg.innerHTML = `<div class="msg err">اكتب تفاصيل الملاحظة</div>`; return; }
-      addNote(sid, {id:uid(), studentId:sid, groupId:g.id, teacherName:g.teacherName||"—", category, text, createdAt:new Date().toISOString(), contacted:false});
-      saveDB(DB);
-      msg.innerHTML = `<div class="msg ok">تم الإرسال إلى الإدارة</div>`;
-      document.getElementById("noteText").value = "";
-    };
-  }
-  document.getElementById("finalizeBtn").onclick = () => {
-    const date = document.getElementById("tDate").value;
-    showConfirm("بعد التثبيت لن تتمكن من تعديل حضور هذا اليوم إلا عبر الإدارة. هل تريد المتابعة؟", () => {
-      setLock(date, g.id, true);
-      drawTable();
-    });
+}
+
+function renderTeacherOfficial(c, g, studs){
+  const officialResults = studs.flatMap(s => resultsFor(s.id).filter(r=>r.examType==="إداري" && r.published!==false).map(r=>({...r, studentName:s.name, studentCode:s.code})));
+  c.innerHTML = officialResults.length ? `
+    <div class="card">
+      <h2>🏛️ نتائج الامتحانات الإدارية المنشورة — ${g.name}</h2>
+      <table>
+        <tr><th>الطالب/ة</th><th>الامتحان</th><th>التاريخ</th><th>الدرجة</th><th>التقدير</th></tr>
+        ${officialResults.sort((a,b)=>b.date.localeCompare(a.date)).map(r=>`
+          <tr>
+            <td class="name-cell">${r.studentCode} — ${r.studentName}</td>
+            <td>${r.examTitle}</td>
+            <td>${r.date}</td>
+            <td>${r.score}/${r.maxScore} (${r.percentage}%)</td>
+            <td style="color:${gradeColor(r.grade)};font-weight:bold;">${r.grade}</td>
+          </tr>`).join("")}
+      </table>
+    </div>` : `<div class="card"><p style="color:var(--muted);">لا توجد نتائج امتحانات إدارية منشورة بعد لهذه المجموعة.</p></div>`;
+}
+
+function renderTeacherInbox(c, g, myMessages){
+  const unreadCount = myMessages.filter(m=>m.createdAt > lastSeen).length;
+  c.innerHTML = `
+    <div class="card">
+      <h2>📥 رسائل الإدارة ${unreadCount ? `<span class="badge" style="background:var(--error);">${unreadCount} جديدة</span>` : ""}</h2>
+      ${myMessages.length ? myMessages.map(m=>{
+        const isNew = m.createdAt > lastSeen;
+        const dateTxt = new Date(m.createdAt).toLocaleString("ar-EG");
+        return `<div style="padding:8px 0;border-bottom:1px solid var(--border);${isNew?'background:#FDECEA;':''}">
+          <span style="color:var(--muted);font-size:11px;">${dateTxt}${!m.groupId?' · بث عام':''}</span>
+          <p style="margin:4px 0 0;">${m.text}</p>
+        </div>`;
+      }).join("") : `<p style="color:var(--muted);font-size:13px;">لا توجد رسائل من الإدارة بعد</p>`}
+    </div>`;
+  DB.lastSeen[g.id] = new Date().toISOString();
+  saveDB(DB);
+}
+
+function renderTeacherNote(c, g, studs){
+  const NOTE_CATS = ["سلوك سيئ","غياب متكرر","ضعف في التسميع","أخرى"];
+  c.innerHTML = `
+    <div class="card">
+      <h2>📋 كتابة ملاحظة عن طالب</h2>
+      <p style="color:var(--muted);font-size:13px;">تصل الملاحظة مباشرة إلى لوحة الإدارة.</p>
+      <div class="row">
+        <div><label>الطالب/ة</label><select id="noteStudent">${studs.map(s=>`<option value="${s.id}">${s.code} — ${s.name} (${studentWord(s)})</option>`).join("") || "<option value=''>لا يوجد طلاب/طالبات</option>"}</select></div>
+        <div><label>نوع الملاحظة</label><select id="noteCategory">${NOTE_CATS.map(cat=>`<option>${cat}</option>`).join("")}</select></div>
+      </div>
+      <div style="margin-top:10px;">
+        <label>تفاصيل الملاحظة</label>
+        <input id="noteText" style="width:100%" placeholder="اكتب وصف الملاحظة...">
+      </div>
+      <button class="btn-green" style="margin-top:10px;" id="noteSaveBtn">📤 إرسال إلى الإدارة</button>
+      <div id="noteMsg"></div>
+    </div>`;
+  document.getElementById("noteSaveBtn").onclick = () => {
+    const sid = document.getElementById("noteStudent").value;
+    const category = document.getElementById("noteCategory").value;
+    const text = document.getElementById("noteText").value.trim();
+    const msg = document.getElementById("noteMsg");
+    if(!sid){ msg.innerHTML = `<div class="msg err">اختر طالباً</div>`; return; }
+    if(!text){ msg.innerHTML = `<div class="msg err">اكتب تفاصيل الملاحظة</div>`; return; }
+    addNote(sid, {id:uid(), studentId:sid, groupId:g.id, teacherName:g.teacherName||"—", category, text, createdAt:new Date().toISOString(), contacted:false});
+    saveDB(DB);
+    msg.innerHTML = `<div class="msg ok">تم الإرسال إلى الإدارة</div>`;
+    document.getElementById("noteText").value = "";
   };
-  drawTable();
 }
 
 /* ---------------- Parent Portal ---------------- */
