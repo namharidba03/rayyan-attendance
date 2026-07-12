@@ -778,6 +778,28 @@ function currentJuzFor(studentId){
   return null; // completed everything
 }
 
+/* ---------------- Final Level Exam (امتحان نهائي للمستوى) ---------------- */
+function finalExamFor(studentId, levelId){
+  const p = DB.memorizationProgress[studentId];
+  return (p && p.finalExams && p.finalExams[levelId]) || null;
+}
+function saveFinalExam(studentId, levelId, data){
+  if(!DB.memorizationProgress[studentId]) DB.memorizationProgress[studentId] = {};
+  if(!DB.memorizationProgress[studentId].finalExams) DB.memorizationProgress[studentId].finalExams = {};
+  DB.memorizationProgress[studentId].finalExams[levelId] = data;
+}
+function levelFullyPassed(studentId, level){
+  const fe = finalExamFor(studentId, level.id);
+  return levelStatus(studentId, level) && !!(fe && fe.passed);
+}
+function notifyAdminOnce(studentId, key, text, groupId){
+  if(!DB.memorizationProgress[studentId]) DB.memorizationProgress[studentId] = {};
+  if(!DB.memorizationProgress[studentId].notified) DB.memorizationProgress[studentId].notified = {};
+  if(DB.memorizationProgress[studentId].notified[key]) return;
+  DB.memorizationProgress[studentId].notified[key] = true;
+  DB.messages.push({id:uid(), groupId, text, createdAt:new Date().toISOString()});
+}
+
 function tomorrowStr(){ const d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); }
 function fmtDate(d){
   const dt = new Date(d+"T00:00:00");
@@ -2712,6 +2734,10 @@ function renderMemorizationModule(c, eligibleStudents, readOnly, teacherGroup){
             result: resultInput.value, notes, date: todayStr(), teacherName: teacherGroup ? (teacherGroup.teacherName||"") : (DB.groups.find(x=>x.id===s.groupId)?.teacherName||"")
           };
           saveJuzProgress(sid, juzNum, pp);
+          const lvForNotify = levelForJuz(juzNum);
+          if(lvForNotify && levelStatus(sid, lvForNotify)){
+            notifyAdminOnce(sid, "juzlevel-"+lvForNotify.id, `📗 ${studentWord(s)} ${s.name} (${s.code}) أنهى/أنهت بنجاح جميع أجزاء ${lvForNotify.name} — بانتظار الامتحان النهائي للمستوى.`, s.groupId);
+          }
           saveDB(DB);
           drawJuzDetail(juzNum);
           drawJuzList(DB.memorizationLevels.find(lv=>lv.id===selectedLevelId));
@@ -2772,6 +2798,10 @@ function renderMemorizationModule(c, eligibleStudents, readOnly, teacherGroup){
             };
             if(resultInput.value === "راسب") pp.secondFailure = true;
             saveJuzProgress(sid, juzNum, pp);
+            const lvForNotify2 = levelForJuz(juzNum);
+            if(lvForNotify2 && levelStatus(sid, lvForNotify2)){
+              notifyAdminOnce(sid, "juzlevel-"+lvForNotify2.id, `📗 ${studentWord(s)} ${s.name} (${s.code}) أنهى/أنهت بنجاح جميع أجزاء ${lvForNotify2.name} — بانتظار الامتحان النهائي للمستوى.`, s.groupId);
+            }
             saveDB(DB);
             drawJuzDetail(juzNum);
             drawJuzList(DB.memorizationLevels.find(lv=>lv.id===selectedLevelId));
@@ -2781,7 +2811,121 @@ function renderMemorizationModule(c, eligibleStudents, readOnly, teacherGroup){
       }
     }
 
+    function finalExamBlockHTML(level, fe){
+      const allJuzDone = levelStatus(sid, level);
+      if(!allJuzDone) return "";
+      if(readOnly){
+        if(!fe) return `<div class="card"><h2>🎓 الامتحان النهائي للمستوى</h2><p style="color:var(--muted);font-size:13px;">لم يبدأ بعد — بانتظار المعلم/ة.</p></div>`;
+        const mainColor = fe.main.result==="ناجح" ? "var(--present)" : "var(--error)";
+        return `<div class="card">
+          <h2>🎓 الامتحان النهائي للمستوى</h2>
+          <p>الدرجة: <strong>${fe.main.total}/100</strong> — <span style="color:${mainColor};font-weight:bold;">${fe.main.result}</span> <span style="color:var(--muted);font-size:12px;">(${fe.main.date})</span></p>
+          ${fe.reviewWeek ? `<p>إعادة (أسبوع مراجعة): <strong>${fe.reviewWeek.total}/100</strong> — <span style="color:${fe.reviewWeek.result==='ناجح'?'var(--present)':'var(--error)'};font-weight:bold;">${fe.reviewWeek.result}</span></p>` : ""}
+          <p style="font-weight:bold;color:${fe.passed?'var(--present)':'var(--error)'};">${fe.passed ? "✅ اجتاز/ت — مؤهّل/ة للشهادة" : fe.outcome==="راسب" ? "⛔ راسب/ة — يحتاج/تحتاج لإعادة المستوى" : "قيد الانتظار"}</p>
+        </div>`;
+      }
+      // Teacher (editable) mode
+      if(fe && fe.passed){
+        return `<div class="card"><h2>🎓 الامتحان النهائي للمستوى</h2><p style="color:var(--present);font-weight:bold;">✅ اجتاز/ت بنجاح (${fe.main.total}/100${fe.reviewWeek?' — بعد أسبوع المراجعة: '+fe.reviewWeek.total+'/100':''}) — مؤهّل/ة لشهادة الاعتماد.</p></div>`;
+      }
+      if(fe && fe.outcome==="راسب"){
+        return `<div class="card" style="border-right:5px solid var(--error);"><h2>🎓 الامتحان النهائي للمستوى</h2><p style="color:var(--error);font-weight:bold;">⛔ راسب/ة نهائياً — يحتاج/تحتاج لإعادة المستوى بالكامل.</p></div>`;
+      }
+      // Needs main exam, or main failed and awaiting teacher decision, or review week in progress
+      const needsDecision = fe && fe.main && fe.main.result!=="ناجح" && !fe.reviewWeek && fe.outcome==="قيد الانتظار";
+      const inReview = fe && fe.awaitingReview;
+      const existing = inReview ? null : (fe && fe.main);
+      return `<div class="card" style="border-right:5px solid var(--gold);">
+        <h2>🎓 الامتحان النهائي للمستوى ${inReview?'— أسبوع المراجعة':''}</h2>
+        <p style="color:var(--muted);font-size:13px;">${inReview? 'إعادة الامتحان (10 أسئلة/10 لكل سؤال) بعد أسبوع المراجعة.' : 'يُعقد بعد إتمام جميع أجزاء المستوى — 10 أسئلة، كل سؤال من 10 درجات (المجموع 100). النجاح يتطلب 50 فأكثر.'}</p>
+        <div class="row" style="flex-wrap:wrap;">
+          ${Array.from({length:10}).map((_,i)=>`
+            <div style="width:65px;">
+              <label style="font-size:11px;">س${AR_NUM_WORDS[i+1]||i+1}</label>
+              <input type="number" min="0" max="10" data-fq="${i}" value="${existing?existing.questionScores[i]:''}" style="width:100%;">
+            </div>`).join("")}
+          <div style="align-self:flex-end;font-weight:bold;color:var(--green-d)"><span id="finalExamTotal">${existing?existing.total:0}</span> / 100</div>
+        </div>
+        <button class="btn-green btn-sm" style="margin-top:8px;" id="saveFinalExamBtn">حفظ نتيجة الامتحان</button>
+        <div id="finalExamMsg"></div>
+        ${needsDecision ? `
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+            <p style="color:var(--error);font-weight:bold;">الدرجة أقل من 50 — اختر الإجراء:</p>
+            <button class="btn-gold btn-sm" id="giveReviewWeekBtn">📘 منح أسبوع مراجعة</button>
+            <button class="btn-danger btn-sm" id="failDirectlyBtn">❌ راسب/ة مباشرة</button>
+          </div>` : ""}
+      </div>`;
+    }
+
+    function wireFinalExamHandlers(level){
+      if(readOnly) return;
+      const scoreInputs = () => Array.from({length:10}).map((_,i)=>document.querySelector(`[data-fq="${i}"]`));
+      if(!scoreInputs()[0]) return;
+      scoreInputs().forEach(inp=>{
+        inp.oninput = () => {
+          const sum = scoreInputs().reduce((s,el)=>s+(parseFloat(el.value)||0),0);
+          document.getElementById("finalExamTotal").textContent = sum;
+        };
+      });
+      const fe = finalExamFor(sid, level.id) || {};
+      const inReview = fe.awaitingReview;
+
+      document.getElementById("saveFinalExamBtn").onclick = () => {
+        const scores = scoreInputs().map(el=>parseFloat(el.value)||0);
+        const total = scores.reduce((a,b)=>a+b,0);
+        const result = total >= 50 ? "ناجح" : "دون الحد الأدنى";
+        const record = {questionScores:scores, total, result, date:todayStr(), teacherName: teacherGroup?(teacherGroup.teacherName||""):""};
+        const cur = finalExamFor(sid, level.id) || {};
+        if(inReview){
+          cur.reviewWeek = record;
+          cur.awaitingReview = false;
+          if(result==="ناجح"){
+            cur.outcome = "ناجح"; cur.passed = true;
+            saveFinalExam(sid, level.id, cur);
+            notifyAdminOnce(sid, "finalexam-pass-"+level.id, `🎓 ${studentWord(s)} ${s.name} (${s.code}) اجتاز/ت الامتحان النهائي لـ ${level.name} (بعد أسبوع المراجعة) — يستحق/تستحق شهادة الاعتماد!`, s.groupId);
+          } else {
+            cur.outcome = "راسب"; cur.passed = false;
+            saveFinalExam(sid, level.id, cur);
+            notifyAdminOnce(sid, "finalexam-fail-"+level.id, `⚠️ ${studentWord(s)} ${s.name} (${s.code}) لم يجتز/تجتز الامتحان النهائي لـ ${level.name} حتى بعد أسبوع المراجعة — يحتاج/تحتاج لإعادة المستوى.`, s.groupId);
+          }
+        } else {
+          cur.main = record;
+          if(result==="ناجح"){
+            cur.outcome = "ناجح"; cur.passed = true;
+            saveFinalExam(sid, level.id, cur);
+            notifyAdminOnce(sid, "finalexam-pass-"+level.id, `🎓 ${studentWord(s)} ${s.name} (${s.code}) اجتاز/ت الامتحان النهائي لـ ${level.name} — يستحق/تستحق شهادة الاعتماد!`, s.groupId);
+          } else {
+            cur.outcome = "قيد الانتظار"; cur.passed = false;
+            saveFinalExam(sid, level.id, cur);
+          }
+        }
+        saveDB(DB);
+        drawProgressTable(level);
+      };
+
+      const reviewBtn = document.getElementById("giveReviewWeekBtn");
+      if(reviewBtn) reviewBtn.onclick = () => {
+        const cur = finalExamFor(sid, level.id) || {};
+        cur.awaitingReview = true;
+        saveFinalExam(sid, level.id, cur);
+        saveDB(DB);
+        drawProgressTable(level);
+      };
+      const failBtn = document.getElementById("failDirectlyBtn");
+      if(failBtn) failBtn.onclick = () => {
+        showConfirm("تأكيد رسوب الطالب/ة نهائياً وإعادة المستوى؟", () => {
+          const cur = finalExamFor(sid, level.id) || {};
+          cur.outcome = "راسب"; cur.passed = false;
+          saveFinalExam(sid, level.id, cur);
+          notifyAdminOnce(sid, "finalexam-fail-"+level.id, `⚠️ ${studentWord(s)} ${s.name} (${s.code}) رسب/ت في الامتحان النهائي لـ ${level.name} — يحتاج/تحتاج لإعادة المستوى.`, s.groupId);
+          saveDB(DB);
+          drawProgressTable(level);
+        });
+      };
+    }
+
     function drawProgressTable(level){
+      const fe = finalExamFor(sid, level.id);
       document.getElementById("memProgressTableWrap").innerHTML = `
         <div class="card">
           <h2>جدول متابعة التقدم — ${level.name}</h2>
@@ -2802,8 +2946,11 @@ function renderMemorizationModule(c, eligibleStudents, readOnly, teacherGroup){
               return `<tr><td style="font-weight:bold;">الجزء ${jn}</td>${cells}<td style="font-weight:bold;">${total}/${maxTotal}</td><td style="color:${st.color};font-weight:bold;">${st.label}</td></tr>`;
             }).join("")}
           </table>
-          ${levelStatus(sid, level) ? `<button class="btn-green" style="margin-top:10px;" id="issueLevelCertBtn">📜 إصدار وثيقة اعتماد المستوى</button><div id="levelCertMsg"></div>` : ""}
-        </div>`;
+        </div>
+        ${finalExamBlockHTML(level, fe)}
+        ${readOnly && levelFullyPassed(sid, level) ? `<div class="card"><button class="btn-green" id="issueLevelCertBtn">📜 إصدار وثيقة اعتماد المستوى</button><div id="levelCertMsg"></div></div>` : ""}
+      `;
+      wireFinalExamHandlers(level);
       const certBtn = document.getElementById("issueLevelCertBtn");
       if(certBtn) certBtn.onclick = () => printLevelCertificate(s, level);
     }
