@@ -2524,9 +2524,18 @@ function renderAdminExams(c){
 
 /* ---------------- Admin: Memorization Evaluation System (نظام تقييم الحفظ) ---------------- */
 function renderAdminMemorization(c){
+  renderMemorizationModule(c, DB.students.filter(s=>(s.curriculum||"quran")==="quran"), true, null);
+}
+
+function renderTeacherMemorization(c, g, studs){
+  const quranStuds = studs.filter(s=>(s.curriculum||"quran")==="quran");
+  renderMemorizationModule(c, quranStuds, false, g);
+}
+
+function renderMemorizationModule(c, eligibleStudents, readOnly, teacherGroup){
   c.innerHTML = `
     <div class="card no-print">
-      <h2>📖 نظام تقييم الحفظ</h2>
+      <h2>📖 نظام تقييم الحفظ ${readOnly?'<span style="font-size:12px;color:var(--muted);font-weight:normal;">(عرض فقط — الإدخال من صلاحية المعلم/ة)</span>':''}</h2>
       <p style="color:var(--muted);font-size:13px;">نظام متابعة حفظ القرآن الكريم حسب المستويات العامة والأجزاء — خاص بمجموعات القرآن.</p>
       <div class="autocomplete" style="max-width:400px;">
         <label>الطالب/ة (اكتب الاسم أو الرقم)</label>
@@ -2541,7 +2550,7 @@ function renderAdminMemorization(c){
   searchInput.oninput = () => {
     const q = searchInput.value.trim().toLowerCase();
     if(!q){ acList.classList.add("hidden"); return; }
-    const matches = DB.students.filter(s=>(s.curriculum||"quran")==="quran" && (s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q))).slice(0,8);
+    const matches = eligibleStudents.filter(s=>s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q)).slice(0,8);
     acList.innerHTML = matches.map(s=>{
       const g = DB.groups.find(x=>x.id===s.groupId);
       return `<div class="ac-item" data-sid="${s.id}"><strong>${s.code}</strong> — ${s.name} <span style="color:var(--muted);font-size:12px">— ${g?g.name:""}</span></div>`;
@@ -2605,6 +2614,28 @@ function renderAdminMemorization(c){
       });
     }
 
+    function readOnlyEvalBlock(t, existing, juzNum, isReview){
+      const maxT = t.questions*10;
+      if(!existing){
+        return `
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px;">
+          <strong>التقييم ${AR_NUM_WORDS[t.num]||t.num}${isReview?' (مراجعة)':''}</strong> <span style="color:var(--muted);font-size:12px;">(${t.range} — ${t.questions} أسئلة)</span>
+          <p style="color:var(--muted);font-size:13px;margin:8px 0 0;">لم يتم إدخال النتيجة بعد.</p>
+        </div>`;
+      }
+      const resColor = existing.result==="ناجح" ? "var(--present)" : existing.result==="راسب" ? "var(--error)" : "var(--late)";
+      return `
+      <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px;">
+        <strong>التقييم ${AR_NUM_WORDS[t.num]||t.num}${isReview?' (مراجعة)':''}</strong> <span style="color:var(--muted);font-size:12px;">(${t.range} — ${t.questions} أسئلة)</span>
+        <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+          ${existing.questionScores.map((sc,i)=>`<div style="width:60px;text-align:center;"><div style="font-size:11px;color:var(--muted);">س${AR_NUM_WORDS[i+1]||i+1}</div><div style="font-weight:bold;">${sc}</div></div>`).join("")}
+          <div style="align-self:center;font-weight:bold;color:var(--green-d)">${existing.total} / ${maxT}</div>
+        </div>
+        <p style="margin-top:8px;"><span style="color:${resColor};font-weight:bold;">${existing.result}</span> ${existing.date?`<span style="color:var(--muted);font-size:12px;"> — ${existing.date}${existing.teacherName?' — '+existing.teacherName:''}</span>`:''}</p>
+        ${existing.notes ? `<p style="color:var(--muted);font-size:13px;margin-top:4px;">📝 ${existing.notes}</p>` : ""}
+      </div>`;
+    }
+
     function drawJuzDetail(juzNum){
       const tmpl = juzTemplate(juzNum);
       const p = juzProgress(sid, juzNum);
@@ -2618,6 +2649,15 @@ function renderAdminMemorization(c){
         </div>
         ${showReview ? `<div class="card" style="border-right:5px solid var(--gold);"><h2>📘 أسبوع المراجعة — الجزء ${juzNum}</h2><div id="memReviewBox"></div></div>` : ""}
       `;
+
+      if(readOnly){
+        document.getElementById("memEvalsBox").innerHTML = tmpl.map(t=>readOnlyEvalBlock(t, p.evaluations && p.evaluations[t.num], juzNum, false)).join("");
+        if(showReview){
+          const rp = p.reviewWeek || {evaluations:{}};
+          document.getElementById("memReviewBox").innerHTML = tmpl.map(t=>readOnlyEvalBlock(t, rp.evaluations && rp.evaluations[t.num], juzNum, true)).join("");
+        }
+        return;
+      }
 
       document.getElementById("memEvalsBox").innerHTML = tmpl.map(t=>{
         const existing = p.evaluations && p.evaluations[t.num];
@@ -2643,7 +2683,6 @@ function renderAdminMemorization(c){
         </div>`;
       }).join("");
 
-      // Live total calc
       tmpl.forEach(t=>{
         Array.from({length:t.questions}).forEach((_,i)=>{
           const inp = document.querySelector(`[data-q="${juzNum}-${t.num}-${i}"]`);
@@ -2670,7 +2709,7 @@ function renderAdminMemorization(c){
           if(!pp.evaluations) pp.evaluations = {};
           pp.evaluations[t.num] = {
             evalNum: t.num, questionScores: scores, total, maxTotal: t.questions*10,
-            result: resultInput.value, notes, date: todayStr(), teacherName: SESSION.role==="admin" ? (DB.mainAdminName||"الإدارة") : (DB.groups.find(x=>x.id===s.groupId)?.teacherName||"")
+            result: resultInput.value, notes, date: todayStr(), teacherName: teacherGroup ? (teacherGroup.teacherName||"") : (DB.groups.find(x=>x.id===s.groupId)?.teacherName||"")
           };
           saveJuzProgress(sid, juzNum, pp);
           saveDB(DB);
@@ -3746,6 +3785,7 @@ function renderTeacher(){
         <div class="tab ${teacherTab==='attendance'?'active':''}" data-tt="attendance">📋 تسجيل الحضور</div>
         <div class="tab ${teacherTab==='surah'?'active':''}" data-tt="surah">📖 السورة / المرحلة ${missingSurahCount?`<span class="badge" style="background:var(--error);font-size:10px;">${missingSurahCount}</span>`:""}</div>
         <div class="tab ${teacherTab==='exam'?'active':''}" data-tt="exam">📝 اختبار الفصل</div>
+        ${(g.curriculum||"quran")==="quran" ? `<div class="tab ${teacherTab==='memorization'?'active':''}" data-tt="memorization">📖 تقييم الحفظ</div>` : ""}
         <div class="tab ${teacherTab==='official'?'active':''}" data-tt="official">🏛️ نتائج الامتحانات الإدارية</div>
         <div class="tab ${teacherTab==='inbox'?'active':''}" data-tt="inbox">📩 رسائل الإدارة ${unreadCount?`<span class="badge" style="background:var(--error);font-size:10px;">${unreadCount}</span>`:""}</div>
         <div class="tab ${teacherTab==='note'?'active':''}" data-tt="note">📝 ملاحظة عن طالب</div>
@@ -3756,10 +3796,12 @@ function renderTeacher(){
     t.onclick = () => { teacherTab = t.dataset.tt; renderTeacher(); };
   });
   const c = document.getElementById("teacherContent");
+  if(teacherTab==="memorization" && (g.curriculum||"quran")!=="quran") teacherTab = "home";
   if(teacherTab==="home") return renderTeacherHome(c, g, studs, activeExcuses);
   if(teacherTab==="attendance") return renderTeacherAttendance(c, g, studs);
   if(teacherTab==="surah") return renderTeacherSurah(c, g, studs);
   if(teacherTab==="exam") return renderTeacherExam(c, g, studs);
+  if(teacherTab==="memorization") return renderTeacherMemorization(c, g, studs);
   if(teacherTab==="official") return renderTeacherOfficial(c, g, studs);
   if(teacherTab==="inbox") return renderTeacherInbox(c, g, myMessages);
   if(teacherTab==="note") return renderTeacherNote(c, g, studs);
