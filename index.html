@@ -744,37 +744,47 @@ function juzMaxTotal(juzNum){
 function juzPassThreshold(juzNum){
   return juzNum === 30 ? 85 : 45;
 }
-function juzTotalScore(studentId, juzNum){
+function evalHalfThreshold(t){
+  return (t.questions*10)/2;
+}
+function juzEvalEffective(studentId, juzNum, tNum){
   const p = juzProgress(studentId, juzNum);
-  return Object.values(p.evaluations||{}).reduce((s,e)=>s+e.total,0);
+  const mainEval = p.evaluations && p.evaluations[tNum];
+  if(!mainEval) return {status:"missing"};
+  if(mainEval.result === "ناجح") return {status:"pass", total: mainEval.total};
+  const reviewEval = p.reviewWeek && p.reviewWeek.evaluations && p.reviewWeek.evaluations[tNum];
+  if(reviewEval){
+    if(reviewEval.result === "ناجح") return {status:"pass-via-review", total: reviewEval.total};
+    return {status:"fail-final"};
+  }
+  return {status:"pending-decision"};
+}
+function juzTotalScore(studentId, juzNum){
+  const tmpl = juzTemplate(juzNum);
+  return tmpl.reduce((sum,t)=>{
+    const e = juzEvalEffective(studentId, juzNum, t.num);
+    return sum + ((e.status==="pass"||e.status==="pass-via-review") ? e.total : 0);
+  }, 0);
 }
 function juzStatus(studentId, juzNum){
   const p = juzProgress(studentId, juzNum);
   const tmpl = juzTemplate(juzNum);
-  const mainEvals = Object.values(p.evaluations || {});
-  const allMainPassed = tmpl.every(t => {
-    const e = p.evaluations && p.evaluations[t.num];
-    return e && e.result === "ناجح";
-  });
-  const totalScore = juzTotalScore(studentId, juzNum);
-  const threshold = juzPassThreshold(juzNum);
-  if(allMainPassed){
+
+  if(p.sentBackDirectly) return {label:"⛔ إعادة المستوى السابق", color:"var(--error)"};
+
+  const effective = tmpl.map(t => ({num:t.num, ...juzEvalEffective(studentId, juzNum, t.num)}));
+
+  if(effective.some(e => e.status==="fail-final")) return {label:"⛔ إعادة المستوى السابق", color:"var(--error)"};
+  if(effective.some(e => e.status==="pending-decision")) return {label:"⚠️ بانتظار قرار المعلم/ة", color:"var(--error)"};
+
+  const allPass = effective.every(e => e.status==="pass" || e.status==="pass-via-review");
+  if(allPass){
+    const totalScore = juzTotalScore(studentId, juzNum);
+    const threshold = juzPassThreshold(juzNum);
     if(totalScore > threshold) return {label:"مكتمل", color:"var(--present)"};
     return {label:`⚠️ المجموع غير كافٍ (${totalScore}/${threshold}+)`, color:"var(--gold-d)"};
   }
-  const anyMainFailed = tmpl.some(t => {
-    const e = p.evaluations && p.evaluations[t.num];
-    return e && e.result === "راسب";
-  });
-  const anyReview = tmpl.some(t => {
-    const e = p.evaluations && p.evaluations[t.num];
-    return e && e.result === "أسبوع مراجعة";
-  });
-  const reviewEvals = Object.values((p.reviewWeek && p.reviewWeek.evaluations) || {});
-  const reviewFailed = reviewEvals.some(e => e.result === "راسب");
-  if(reviewFailed) return {label:"⛔ إعادة المستوى السابق", color:"var(--error)"};
-  if(anyMainFailed || anyReview) return {label:"📘 أسبوع مراجعة", color:"var(--late)"};
-  const anyEntered = mainEvals.length > 0;
+  const anyEntered = effective.some(e => e.status !== "missing");
   return anyEntered ? {label:"جارٍ", color:"var(--gold-d)"} : {label:"لم يبدأ", color:"var(--muted)"};
 }
 function levelStatus(studentId, level){
@@ -2674,7 +2684,7 @@ function renderMemorizationModule(c, eligibleStudents, readOnly, teacherGroup){
       const tmpl = juzTemplate(juzNum);
       const p = juzProgress(sid, juzNum);
       const st = juzStatus(sid, juzNum);
-      const showReview = tmpl.some(t => p.evaluations && p.evaluations[t.num] && (p.evaluations[t.num].result==="راسب" || p.evaluations[t.num].result==="أسبوع مراجعة"));
+      const showReview = tmpl.some(t => p.evaluations && p.evaluations[t.num] && p.evaluations[t.num].result==="أسبوع مراجعة");
       const threshold = juzPassThreshold(juzNum);
       const maxT = juzMaxTotal(juzNum);
       const curTotal = juzTotalScore(sid, juzNum);
@@ -2700,9 +2710,11 @@ function renderMemorizationModule(c, eligibleStudents, readOnly, teacherGroup){
       document.getElementById("memEvalsBox").innerHTML = tmpl.map(t=>{
         const existing = p.evaluations && p.evaluations[t.num];
         const maxT = t.questions*10;
+        const half = evalHalfThreshold(t);
+        const pendingDecision = existing && existing.result !== "ناجح" && !(p.reviewWeek && p.reviewWeek.evaluations && p.reviewWeek.evaluations[t.num]) && !p.sentBackDirectly;
         return `
         <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px;">
-          <strong>التقييم ${AR_NUM_WORDS[t.num]||t.num}</strong> <span style="color:var(--muted);font-size:12px;">(${t.range} — ${t.questions} أسئلة)</span>
+          <strong>التقييم ${AR_NUM_WORDS[t.num]||t.num}</strong> <span style="color:var(--muted);font-size:12px;">(${t.range} — ${t.questions} أسئلة — النجاح: أكثر من ${half}/${maxT})</span>
           <div class="row" style="margin-top:8px;flex-wrap:wrap;">
             ${Array.from({length:t.questions}).map((_,i)=>`
               <div style="width:70px;">
@@ -2711,13 +2723,15 @@ function renderMemorizationModule(c, eligibleStudents, readOnly, teacherGroup){
               </div>`).join("")}
             <div style="align-self:flex-end;font-weight:bold;color:var(--green-d)"><span data-total="${juzNum}-${t.num}">${existing?existing.total:0}</span> / ${maxT}</div>
           </div>
-          <div class="row" style="margin-top:8px;">
-            <label style="font-weight:normal;"><input type="radio" name="res-${juzNum}-${t.num}" value="ناجح" ${existing&&existing.result==="ناجح"?"checked":""}> ناجح/ة</label>
-            <label style="font-weight:normal;"><input type="radio" name="res-${juzNum}-${t.num}" value="راسب" ${existing&&existing.result==="راسب"?"checked":""}> راسب/ة</label>
-            <label style="font-weight:normal;"><input type="radio" name="res-${juzNum}-${t.num}" value="أسبوع مراجعة" ${existing&&existing.result==="أسبوع مراجعة"?"checked":""}> أسبوع مراجعة</label>
-          </div>
+          ${existing ? `<p style="margin-top:6px;font-weight:bold;color:${existing.result==='ناجح'?'var(--present)':'var(--error)'};">النتيجة: ${existing.result}</p>` : ""}
           <input data-notes="${juzNum}-${t.num}" placeholder="ملاحظات المعلم..." style="width:100%;margin-top:6px;" value="${existing?(existing.notes||'').replace(/"/g,'&quot;'):''}">
           <button class="btn-green btn-sm" style="margin-top:6px;" data-save-eval="${juzNum}-${t.num}">حفظ</button>
+          ${pendingDecision ? `
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+              <p style="color:var(--error);font-weight:bold;">الدرجة لم تتجاوز النصف — اختر الإجراء:</p>
+              <button class="btn-danger btn-sm" data-send-back="${juzNum}-${t.num}">🔙 إرجاع للمستوى السابق</button>
+              <button class="btn-gold btn-sm" data-grant-review="${juzNum}-${t.num}">📘 منح أسبوع مراجعة</button>
+            </div>` : ""}
         </div>`;
       }).join("");
 
@@ -2740,14 +2754,14 @@ function renderMemorizationModule(c, eligibleStudents, readOnly, teacherGroup){
             scores.push(parseFloat(document.querySelector(`[data-q="${juzNum}-${t.num}-${k}"]`).value) || 0);
           }
           const total = scores.reduce((a,b)=>a+b,0);
-          const resultInput = document.querySelector(`input[name="res-${juzNum}-${t.num}"]:checked`);
-          if(!resultInput){ showAlert("اختر النتيجة (ناجح/راسب/أسبوع مراجعة)"); return; }
+          const half = evalHalfThreshold(t);
+          const result = total > half ? "ناجح" : "راسب";
           const notes = document.querySelector(`[data-notes="${juzNum}-${t.num}"]`).value.trim();
           const pp = juzProgress(sid, juzNum);
           if(!pp.evaluations) pp.evaluations = {};
           pp.evaluations[t.num] = {
             evalNum: t.num, questionScores: scores, total, maxTotal: t.questions*10,
-            result: resultInput.value, notes, date: todayStr(), teacherName: teacherGroup ? (teacherGroup.teacherName||"") : (DB.groups.find(x=>x.id===s.groupId)?.teacherName||"")
+            result, notes, date: todayStr(), teacherName: teacherGroup ? (teacherGroup.teacherName||"") : (DB.groups.find(x=>x.id===s.groupId)?.teacherName||"")
           };
           saveJuzProgress(sid, juzNum, pp);
           const lvForNotify = levelForJuz(juzNum);
@@ -2761,14 +2775,43 @@ function renderMemorizationModule(c, eligibleStudents, readOnly, teacherGroup){
         };
       });
 
+      document.querySelectorAll("[data-send-back]").forEach(btn=>{
+        btn.onclick = () => {
+          showConfirm("تأكيد إرجاع الطالب/ة للمستوى السابق مباشرة (دون أسبوع مراجعة)؟", () => {
+            const pp = juzProgress(sid, juzNum);
+            pp.sentBackDirectly = true;
+            saveJuzProgress(sid, juzNum, pp);
+            notifyAdminOnce(sid, "sendback-"+juzNum, `⛔ ${studentWord(s)} ${s.name} (${s.code}) لم يتجاوز/تتجاوز نصف الدرجة في تقييم الجزء ${juzNum} — تقرر إرجاعه/ا للمستوى السابق مباشرة.`, s.groupId);
+            saveDB(DB);
+            drawJuzDetail(juzNum);
+            drawJuzList(DB.memorizationLevels.find(lv=>lv.id===selectedLevelId));
+            drawProgressTable(DB.memorizationLevels.find(lv=>lv.id===selectedLevelId));
+          });
+        };
+      });
+      document.querySelectorAll("[data-grant-review]").forEach(btn=>{
+        btn.onclick = () => {
+          const pp = juzProgress(sid, juzNum);
+          const key = btn.dataset.grantReview.split("-")[1];
+          pp.evaluations[key].result = "أسبوع مراجعة";
+          saveJuzProgress(sid, juzNum, pp);
+          saveDB(DB);
+          drawJuzDetail(juzNum);
+        };
+      });
+
       if(showReview){
         const rp = p.reviewWeek || {evaluations:{}};
-        document.getElementById("memReviewBox").innerHTML = tmpl.map(t=>{
+        document.getElementById("memReviewBox").innerHTML = tmpl.filter(t=>{
+          const e = p.evaluations && p.evaluations[t.num];
+          return e && e.result === "أسبوع مراجعة";
+        }).map(t=>{
           const existing = rp.evaluations && rp.evaluations[t.num];
           const maxT = t.questions*10;
+          const half = evalHalfThreshold(t);
           return `
           <div style="border:1px solid var(--gold);border-radius:8px;padding:10px;margin-bottom:10px;">
-            <strong>التقييم ${AR_NUM_WORDS[t.num]||t.num} (مراجعة)</strong> <span style="color:var(--muted);font-size:12px;">(${t.range} — ${t.questions} أسئلة)</span>
+            <strong>التقييم ${AR_NUM_WORDS[t.num]||t.num} (مراجعة)</strong> <span style="color:var(--muted);font-size:12px;">(${t.range} — ${t.questions} أسئلة — النجاح: أكثر من ${half}/${maxT})</span>
             <div class="row" style="margin-top:8px;flex-wrap:wrap;">
               ${Array.from({length:t.questions}).map((_,i)=>`
                 <div style="width:70px;">
@@ -2777,17 +2820,15 @@ function renderMemorizationModule(c, eligibleStudents, readOnly, teacherGroup){
                 </div>`).join("")}
               <div style="align-self:flex-end;font-weight:bold;color:var(--gold-d)"><span data-rtotal="${juzNum}-${t.num}">${existing?existing.total:0}</span> / ${maxT}</div>
             </div>
-            <div class="row" style="margin-top:8px;">
-              <label style="font-weight:normal;"><input type="radio" name="rres-${juzNum}-${t.num}" value="ناجح" ${existing&&existing.result==="ناجح"?"checked":""}> ناجح/ة</label>
-              <label style="font-weight:normal;"><input type="radio" name="rres-${juzNum}-${t.num}" value="راسب" ${existing&&existing.result==="راسب"?"checked":""}> راسب/ة</label>
-            </div>
+            ${existing ? `<p style="margin-top:6px;font-weight:bold;color:${existing.result==='ناجح'?'var(--present)':'var(--error)'};">النتيجة: ${existing.result}${existing.result==='راسب'?' — نهائي، يُرجى إرجاع الطالب/ة للمستوى السابق':''}</p>` : `<p style="color:var(--muted);font-size:12px;margin-top:6px;">النجاح تلقائي (أكثر من النصف) — الرسوب هنا نهائي ويستوجب إرجاع المستوى.</p>`}
             <button class="btn-gold btn-sm" style="margin-top:6px;" data-save-review="${juzNum}-${t.num}">حفظ</button>
           </div>`;
         }).join("");
 
         tmpl.forEach(t=>{
-          Array.from({length:t.questions}).forEach((_,i)=>{
-            const inp = document.querySelector(`[data-rq="${juzNum}-${t.num}-${i}"]`);
+          const rqInputs = Array.from({length:t.questions}).map((_,i)=>document.querySelector(`[data-rq="${juzNum}-${t.num}-${i}"]`));
+          if(!rqInputs[0]) return;
+          rqInputs.forEach((inp,i)=>{
             inp.oninput = () => {
               let sum = 0;
               for(let k=0;k<t.questions;k++){
@@ -2804,19 +2845,25 @@ function renderMemorizationModule(c, eligibleStudents, readOnly, teacherGroup){
               scores.push(parseFloat(document.querySelector(`[data-rq="${juzNum}-${t.num}-${k}"]`).value) || 0);
             }
             const total = scores.reduce((a,b)=>a+b,0);
-            const resultInput = document.querySelector(`input[name="rres-${juzNum}-${t.num}"]:checked`);
-            if(!resultInput){ showAlert("اختر النتيجة (ناجح/راسب)"); return; }
+            const half = evalHalfThreshold(t);
+            const result = total > half ? "ناجح" : "راسب";
             const pp = juzProgress(sid, juzNum);
             if(!pp.reviewWeek) pp.reviewWeek = {evaluations:{}};
             pp.reviewWeek.evaluations[t.num] = {
               evalNum: t.num, questionScores: scores, total, maxTotal: t.questions*10,
-              result: resultInput.value, date: todayStr()
+              result, date: todayStr()
             };
-            if(resultInput.value === "راسب") pp.secondFailure = true;
             saveJuzProgress(sid, juzNum, pp);
-            const lvForNotify2 = levelForJuz(juzNum);
-            if(lvForNotify2 && levelStatus(sid, lvForNotify2)){
-              notifyAdminOnce(sid, "juzlevel-"+lvForNotify2.id, `📗 ${studentWord(s)} ${s.name} (${s.code}) أنهى/أنهت بنجاح جميع أجزاء ${lvForNotify2.name} — بانتظار الامتحان النهائي للمستوى.`, s.groupId);
+            if(result === "راسب"){
+              const pp2 = juzProgress(sid, juzNum);
+              pp2.secondFailure = true;
+              saveJuzProgress(sid, juzNum, pp2);
+              notifyAdminOnce(sid, "reviewfail-"+juzNum+"-"+t.num, `⛔ ${studentWord(s)} ${s.name} (${s.code}) لم يتجاوز/تتجاوز أسبوع المراجعة لتقييم الجزء ${juzNum} — يحتاج/تحتاج لإعادة المستوى السابق.`, s.groupId);
+            } else {
+              const lvForNotify2 = levelForJuz(juzNum);
+              if(lvForNotify2 && levelStatus(sid, lvForNotify2)){
+                notifyAdminOnce(sid, "juzlevel-"+lvForNotify2.id, `📗 ${studentWord(s)} ${s.name} (${s.code}) أنهى/أنهت بنجاح جميع أجزاء ${lvForNotify2.name} — بانتظار الامتحان النهائي للمستوى.`, s.groupId);
+              }
             }
             saveDB(DB);
             drawJuzDetail(juzNum);
