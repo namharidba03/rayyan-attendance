@@ -741,6 +741,13 @@ function saveJuzProgress(studentId, juzNum, juzData){
 function juzMaxTotal(juzNum){
   return juzTemplate(juzNum).reduce((sum,e)=>sum+e.questions*10, 0);
 }
+function juzPassThreshold(juzNum){
+  return juzNum === 30 ? 85 : 45;
+}
+function juzTotalScore(studentId, juzNum){
+  const p = juzProgress(studentId, juzNum);
+  return Object.values(p.evaluations||{}).reduce((s,e)=>s+e.total,0);
+}
 function juzStatus(studentId, juzNum){
   const p = juzProgress(studentId, juzNum);
   const tmpl = juzTemplate(juzNum);
@@ -749,7 +756,12 @@ function juzStatus(studentId, juzNum){
     const e = p.evaluations && p.evaluations[t.num];
     return e && e.result === "ناجح";
   });
-  if(allMainPassed) return {label:"مكتمل", color:"var(--present)"};
+  const totalScore = juzTotalScore(studentId, juzNum);
+  const threshold = juzPassThreshold(juzNum);
+  if(allMainPassed){
+    if(totalScore > threshold) return {label:"مكتمل", color:"var(--present)"};
+    return {label:`⚠️ المجموع غير كافٍ (${totalScore}/${threshold}+)`, color:"var(--gold-d)"};
+  }
   const anyMainFailed = tmpl.some(t => {
     const e = p.evaluations && p.evaluations[t.num];
     return e && e.result === "راسب";
@@ -2663,10 +2675,14 @@ function renderMemorizationModule(c, eligibleStudents, readOnly, teacherGroup){
       const p = juzProgress(sid, juzNum);
       const st = juzStatus(sid, juzNum);
       const showReview = tmpl.some(t => p.evaluations && p.evaluations[t.num] && (p.evaluations[t.num].result==="راسب" || p.evaluations[t.num].result==="أسبوع مراجعة"));
+      const threshold = juzPassThreshold(juzNum);
+      const maxT = juzMaxTotal(juzNum);
+      const curTotal = juzTotalScore(sid, juzNum);
 
       document.getElementById("memJuzDetailWrap").innerHTML = `
         <div class="card">
           <h2>الجزء ${juzNum} ${juzNum===30?"(خاص — 4 تقييمات)":""} — تقييمات الحفظ <span style="color:${st.color};font-size:13px;">(${st.label})</span></h2>
+          <p style="color:var(--muted);font-size:13px;background:#F7F7F7;padding:8px;border-radius:6px;">📌 شرط اعتبار الجزء <strong>مكتملاً</strong>: يجب أن يكون مجموع جميع التقييمات <strong>أكثر من ${threshold}</strong> من ${maxT} (بالإضافة إلى النجاح في كل تقييم على حدة). المجموع الحالي: <strong style="color:${curTotal>threshold?'var(--present)':'var(--error)'}">${curTotal}/${maxT}</strong></p>
           <div id="memEvalsBox"></div>
         </div>
         ${showReview ? `<div class="card" style="border-right:5px solid var(--gold);"><h2>📘 أسبوع المراجعة — الجزء ${juzNum}</h2><div id="memReviewBox"></div></div>` : ""}
@@ -2929,6 +2945,7 @@ function renderMemorizationModule(c, eligibleStudents, readOnly, teacherGroup){
       document.getElementById("memProgressTableWrap").innerHTML = `
         <div class="card">
           <h2>جدول متابعة التقدم — ${level.name}</h2>
+          <p style="color:var(--muted);font-size:12px;">📌 شرط الإكمال: مجموع أكثر من 85/170 للجزء الثلاثين، وأكثر من 45/90 لبقية الأجزاء.</p>
           <table>
             <tr><th>الجزء</th><th>ت١</th><th>ت٢</th><th>ت٣</th><th>ت٤</th><th>المجموع</th><th>الحالة</th></tr>
             ${level.juzList.map(jn=>{
