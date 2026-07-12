@@ -311,7 +311,26 @@ Nous vous remercions.`,
     certSeqByYear: {},
     studentsPublic: {},
     exams: {},
-    examResults: {}
+    examResults: {},
+    memorizationLevels: [
+      {id:1, name:"المستوى العام الأول", juzFrom:30, juzTo:26, juzList:[30,29,28,27,26]},
+      {id:2, name:"المستوى العام الثاني", juzFrom:25, juzTo:21, juzList:[25,24,23,22,21]},
+      {id:3, name:"المستوى العام الثالث", juzFrom:20, juzTo:16, juzList:[20,19,18,17,16]},
+      {id:4, name:"المستوى العام الرابع", juzFrom:15, juzTo:11, juzList:[15,14,13,12,11]},
+      {id:5, name:"المستوى العام الخامس", juzFrom:10, juzTo:6, juzList:[10,9,8,7,6]},
+      {id:6, name:"المستوى العام السادس", juzFrom:5, juzTo:1, juzList:[5,4,3,2,1]}
+    ],
+    memorizationTemplateJuz30: [
+      {num:1, range:"الفاتحة ← القدر", questions:3},
+      {num:2, range:"الفاتحة ← الطارق", questions:4},
+      {num:3, range:"الفاتحة ← التكوير", questions:6},
+      {num:4, range:"التقييم العام للجزء", questions:4}
+    ],
+    memorizationTemplateDefault: [
+      {num:1, range:"الحزب الأول", questions:3},
+      {num:2, range:"التقييم العام للجزء", questions:6}
+    ],
+    memorizationProgress: {}
   };
 }
 function migrateDB(db){
@@ -394,6 +413,10 @@ function migrateDB(db){
     db.exams = rebuilt;
   }
   if(!db.examResults) db.examResults = {};
+  if(!db.memorizationLevels) db.memorizationLevels = defaultDB().memorizationLevels;
+  if(!db.memorizationTemplateJuz30) db.memorizationTemplateJuz30 = defaultDB().memorizationTemplateJuz30;
+  if(!db.memorizationTemplateDefault) db.memorizationTemplateDefault = defaultDB().memorizationTemplateDefault;
+  if(!db.memorizationProgress) db.memorizationProgress = {};
   db.students.forEach(s=>{
     if(!s.status) s.status = "نشط";
     if(!s.code){ s.code = "R-"+String(db.nextStudentSeq++).padStart(4,"0"); }
@@ -699,6 +722,62 @@ function generateProctorCode(){
   return String(Math.floor(100000+Math.random()*900000));
 }
 
+/* ---------------- Memorization Evaluation System (نظام تقييم الحفظ) ---------------- */
+const AR_NUM_WORDS = {1:"الأول",2:"الثاني",3:"الثالث",4:"الرابع",5:"الخامس",6:"السادس",7:"السابع",8:"الثامن",9:"التاسع",10:"العاشر"};
+function juzTemplate(juzNum){
+  return juzNum === 30 ? DB.memorizationTemplateJuz30 : DB.memorizationTemplateDefault;
+}
+function levelForJuz(juzNum){
+  return DB.memorizationLevels.find(lv => lv.juzList.includes(juzNum));
+}
+function juzProgress(studentId, juzNum){
+  const p = (DB.memorizationProgress[studentId] || {})[juzNum];
+  return p || {evaluations:{}, reviewWeek:{evaluations:{}}, secondFailure:false, completed:false};
+}
+function saveJuzProgress(studentId, juzNum, juzData){
+  if(!DB.memorizationProgress[studentId]) DB.memorizationProgress[studentId] = {};
+  DB.memorizationProgress[studentId][juzNum] = juzData;
+}
+function juzMaxTotal(juzNum){
+  return juzTemplate(juzNum).reduce((sum,e)=>sum+e.questions*10, 0);
+}
+function juzStatus(studentId, juzNum){
+  const p = juzProgress(studentId, juzNum);
+  const tmpl = juzTemplate(juzNum);
+  const mainEvals = Object.values(p.evaluations || {});
+  const allMainPassed = tmpl.every(t => {
+    const e = p.evaluations && p.evaluations[t.num];
+    return e && e.result === "ناجح";
+  });
+  if(allMainPassed) return {label:"مكتمل", color:"var(--present)"};
+  const anyMainFailed = tmpl.some(t => {
+    const e = p.evaluations && p.evaluations[t.num];
+    return e && e.result === "راسب";
+  });
+  const anyReview = tmpl.some(t => {
+    const e = p.evaluations && p.evaluations[t.num];
+    return e && e.result === "أسبوع مراجعة";
+  });
+  const reviewEvals = Object.values((p.reviewWeek && p.reviewWeek.evaluations) || {});
+  const reviewFailed = reviewEvals.some(e => e.result === "راسب");
+  if(reviewFailed) return {label:"⛔ إعادة المستوى السابق", color:"var(--error)"};
+  if(anyMainFailed || anyReview) return {label:"📘 أسبوع مراجعة", color:"var(--late)"};
+  const anyEntered = mainEvals.length > 0;
+  return anyEntered ? {label:"جارٍ", color:"var(--gold-d)"} : {label:"لم يبدأ", color:"var(--muted)"};
+}
+function levelStatus(studentId, level){
+  const allComplete = level.juzList.every(jn => juzStatus(studentId, jn).label === "مكتمل");
+  return allComplete;
+}
+function currentJuzFor(studentId){
+  // Returns the first not-yet-completed juz across all levels, in booklet order (30 down to 1)
+  const allJuz = DB.memorizationLevels.flatMap(lv=>lv.juzList);
+  for(const jn of allJuz){
+    if(juzStatus(studentId, jn).label !== "مكتمل") return jn;
+  }
+  return null; // completed everything
+}
+
 function tomorrowStr(){ const d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); }
 function fmtDate(d){
   const dt = new Date(d+"T00:00:00");
@@ -979,6 +1058,7 @@ function showParentLogin(){
       const notes = {};
       const excuses = {};
       const examResults = {};
+      const memorization = {};
       for(const sid of studentIds){
         const aSnap = await firebase.database().ref("rayyanDB/attendance/"+sid).once("value");
         attendance[sid] = aSnap.val() || {};
@@ -990,10 +1070,15 @@ function showParentLogin(){
         excuses[sid] = Object.values(eSnap.val() || {});
         const rSnap = await firebase.database().ref("rayyanDB/examResults/"+sid).once("value");
         examResults[sid] = Object.values(rSnap.val() || {});
+        const mSnap = await firebase.database().ref("rayyanDB/memorizationProgress/"+sid).once("value");
+        memorization[sid] = mSnap.val() || {};
       }
-      const [annSnap, feeSettingSnap] = await Promise.all([
+      const [annSnap, feeSettingSnap, memLevelsSnap, memT30Snap, memTDefSnap] = await Promise.all([
         firebase.database().ref("rayyanDB/monthlyAnnouncements").once("value"),
-        firebase.database().ref("rayyanDB/defaultMonthlyFee").once("value")
+        firebase.database().ref("rayyanDB/defaultMonthlyFee").once("value"),
+        firebase.database().ref("rayyanDB/memorizationLevels").once("value"),
+        firebase.database().ref("rayyanDB/memorizationTemplateJuz30").once("value"),
+        firebase.database().ref("rayyanDB/memorizationTemplateDefault").once("value")
       ]);
       PARENT_STATE = {
         students,
@@ -1002,6 +1087,10 @@ function showParentLogin(){
         feePayments,
         excuses,
         examResults,
+        memorization,
+        memorizationLevels: memLevelsSnap.val() || [],
+        memorizationTemplateJuz30: memT30Snap.val() || [],
+        memorizationTemplateDefault: memTDefSnap.val() || [],
         monthlyAnnouncements: Object.values(annSnap.val() || {}),
         defaultMonthlyFee: feeSettingSnap.val() || 2000
       };
@@ -1059,6 +1148,7 @@ function renderAdmin(){
         <div class="tab ${adminTab==='fees'?'active':''}" data-t="fees">💰 الرسوم</div>
         <div class="tab ${adminTab==='certificates'?'active':''}" data-t="certificates">📜 الشهادات</div>
         <div class="tab ${adminTab==='exams'?'active':''}" data-t="exams">📝 الامتحانات</div>
+        <div class="tab ${adminTab==='memorization'?'active':''}" data-t="memorization">📖 نظام تقييم الحفظ</div>
         <div class="tab ${adminTab==='excuses'?'active':''}" data-t="excuses">📝 أعذار الطلاب</div>
         <div class="tab ${adminTab==='notes'?'active':''}" data-t="notes">📋 ملاحظات الطلاب</div>
         <div class="tab ${adminTab==='ranking'?'active':''}" data-t="ranking">🏆 التقييم الشهري</div>
@@ -1081,6 +1171,7 @@ function renderAdmin(){
   if(adminTab==="fees") return renderAdminFees(c);
   if(adminTab==="certificates") return renderAdminCertificates(c);
   if(adminTab==="exams") return renderAdminExams(c);
+  if(adminTab==="memorization") return renderAdminMemorization(c);
   if(adminTab==="excuses") return renderAdminExcuses(c);
   if(adminTab==="notes") return renderAdminNotes(c);
   if(adminTab==="ranking") return renderAdminRanking(c);
@@ -2430,6 +2521,298 @@ function renderAdminExams(c){
   drawExamsList();
 }
 
+/* ---------------- Admin: Memorization Evaluation System (نظام تقييم الحفظ) ---------------- */
+function renderAdminMemorization(c){
+  c.innerHTML = `
+    <div class="card no-print">
+      <h2>📖 نظام تقييم الحفظ</h2>
+      <p style="color:var(--muted);font-size:13px;">نظام متابعة حفظ القرآن الكريم حسب المستويات العامة والأجزاء — خاص بمجموعات القرآن.</p>
+      <div class="autocomplete" style="max-width:400px;">
+        <label>الطالب/ة (اكتب الاسم أو الرقم)</label>
+        <input id="memStudentSearch" style="width:100%" placeholder="مثال: R-0007 أو اسم الطالب" autocomplete="off">
+        <div id="memAcList" class="ac-list hidden"></div>
+      </div>
+    </div>
+    <div id="memWrap"></div>`;
+
+  const searchInput = document.getElementById("memStudentSearch");
+  const acList = document.getElementById("memAcList");
+  searchInput.oninput = () => {
+    const q = searchInput.value.trim().toLowerCase();
+    if(!q){ acList.classList.add("hidden"); return; }
+    const matches = DB.students.filter(s=>(s.curriculum||"quran")==="quran" && (s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q))).slice(0,8);
+    acList.innerHTML = matches.map(s=>{
+      const g = DB.groups.find(x=>x.id===s.groupId);
+      return `<div class="ac-item" data-sid="${s.id}"><strong>${s.code}</strong> — ${s.name} <span style="color:var(--muted);font-size:12px">— ${g?g.name:""}</span></div>`;
+    }).join("");
+    acList.classList.toggle("hidden", matches.length===0);
+    acList.querySelectorAll(".ac-item").forEach(it=>{
+      it.onclick = () => {
+        drawStudentMemorization(it.dataset.sid);
+        acList.classList.add("hidden");
+        searchInput.value = "";
+      };
+    });
+  };
+
+  function drawStudentMemorization(sid){
+    const s = DB.students.find(x=>x.id===sid);
+    if(!s) return;
+    const g = DB.groups.find(x=>x.id===s.groupId);
+    const curJuz = currentJuzFor(sid);
+    const curLevel = curJuz ? levelForJuz(curJuz) : null;
+    let selectedLevelId = curLevel ? curLevel.id : DB.memorizationLevels[0].id;
+
+    function draw(){
+      const level = DB.memorizationLevels.find(lv=>lv.id===selectedLevelId);
+      document.getElementById("memWrap").innerHTML = `
+        <div class="card">
+          <h2>${s.name} <span style="font-size:12px;color:var(--muted);font-weight:normal;">(${s.code}) — ${g?g.name:"—"}</span></h2>
+          <p style="color:var(--muted);font-size:13px;">الموقع الحالي: ${curJuz ? `الجزء ${curJuz} — ${curLevel.name}` : "✅ أكمل جميع المستويات"}</p>
+        </div>
+        <div class="card no-print">
+          <h2>اختر المستوى العام</h2>
+          <select id="memLevelSelect" style="max-width:300px;">
+            ${DB.memorizationLevels.map(lv=>`<option value="${lv.id}" ${lv.id===selectedLevelId?"selected":""}>${lv.name} (جزء ${lv.juzFrom} → ${lv.juzTo})</option>`).join("")}
+          </select>
+        </div>
+        <div id="memJuzListWrap"></div>
+        <div id="memJuzDetailWrap"></div>
+        <div id="memProgressTableWrap"></div>
+      `;
+      document.getElementById("memLevelSelect").onchange = (e) => {
+        selectedLevelId = parseInt(e.target.value);
+        draw();
+      };
+      drawJuzList(level);
+      drawProgressTable(level);
+    }
+
+    function drawJuzList(level){
+      document.getElementById("memJuzListWrap").innerHTML = `
+        <div class="card no-print">
+          <h2>أجزاء ${level.name}</h2>
+          <div class="row">
+            ${level.juzList.map(jn=>{
+              const st = juzStatus(sid, jn);
+              return `<button class="btn-outline btn-sm" data-juz="${jn}" style="border-color:${st.color};color:${st.color};font-weight:bold;">الجزء ${jn} — ${st.label}</button>`;
+            }).join("")}
+          </div>
+        </div>`;
+      document.querySelectorAll("[data-juz]").forEach(btn=>{
+        btn.onclick = () => drawJuzDetail(parseInt(btn.dataset.juz));
+      });
+    }
+
+    function drawJuzDetail(juzNum){
+      const tmpl = juzTemplate(juzNum);
+      const p = juzProgress(sid, juzNum);
+      const st = juzStatus(sid, juzNum);
+      const showReview = tmpl.some(t => p.evaluations && p.evaluations[t.num] && (p.evaluations[t.num].result==="راسب" || p.evaluations[t.num].result==="أسبوع مراجعة"));
+
+      document.getElementById("memJuzDetailWrap").innerHTML = `
+        <div class="card">
+          <h2>الجزء ${juzNum} ${juzNum===30?"(خاص — 4 تقييمات)":""} — تقييمات الحفظ <span style="color:${st.color};font-size:13px;">(${st.label})</span></h2>
+          <div id="memEvalsBox"></div>
+        </div>
+        ${showReview ? `<div class="card" style="border-right:5px solid var(--gold);"><h2>📘 أسبوع المراجعة — الجزء ${juzNum}</h2><div id="memReviewBox"></div></div>` : ""}
+      `;
+
+      document.getElementById("memEvalsBox").innerHTML = tmpl.map(t=>{
+        const existing = p.evaluations && p.evaluations[t.num];
+        const maxT = t.questions*10;
+        return `
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px;">
+          <strong>التقييم ${AR_NUM_WORDS[t.num]||t.num}</strong> <span style="color:var(--muted);font-size:12px;">(${t.range} — ${t.questions} أسئلة)</span>
+          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+            ${Array.from({length:t.questions}).map((_,i)=>`
+              <div style="width:70px;">
+                <label style="font-size:11px;">س${AR_NUM_WORDS[i+1]||i+1}</label>
+                <input type="number" min="0" max="10" data-q="${juzNum}-${t.num}-${i}" value="${existing?existing.questionScores[i]:''}" style="width:100%;">
+              </div>`).join("")}
+            <div style="align-self:flex-end;font-weight:bold;color:var(--green-d)"><span data-total="${juzNum}-${t.num}">${existing?existing.total:0}</span> / ${maxT}</div>
+          </div>
+          <div class="row" style="margin-top:8px;">
+            <label style="font-weight:normal;"><input type="radio" name="res-${juzNum}-${t.num}" value="ناجح" ${existing&&existing.result==="ناجح"?"checked":""}> ناجح/ة</label>
+            <label style="font-weight:normal;"><input type="radio" name="res-${juzNum}-${t.num}" value="راسب" ${existing&&existing.result==="راسب"?"checked":""}> راسب/ة</label>
+            <label style="font-weight:normal;"><input type="radio" name="res-${juzNum}-${t.num}" value="أسبوع مراجعة" ${existing&&existing.result==="أسبوع مراجعة"?"checked":""}> أسبوع مراجعة</label>
+          </div>
+          <input data-notes="${juzNum}-${t.num}" placeholder="ملاحظات المعلم..." style="width:100%;margin-top:6px;" value="${existing?(existing.notes||'').replace(/"/g,'&quot;'):''}">
+          <button class="btn-green btn-sm" style="margin-top:6px;" data-save-eval="${juzNum}-${t.num}">حفظ</button>
+        </div>`;
+      }).join("");
+
+      // Live total calc
+      tmpl.forEach(t=>{
+        Array.from({length:t.questions}).forEach((_,i)=>{
+          const inp = document.querySelector(`[data-q="${juzNum}-${t.num}-${i}"]`);
+          inp.oninput = () => {
+            let sum = 0;
+            for(let k=0;k<t.questions;k++){
+              const v = parseFloat(document.querySelector(`[data-q="${juzNum}-${t.num}-${k}"]`).value) || 0;
+              sum += v;
+            }
+            document.querySelector(`[data-total="${juzNum}-${t.num}"]`).textContent = sum;
+          };
+        });
+        const saveBtn = document.querySelector(`[data-save-eval="${juzNum}-${t.num}"]`);
+        saveBtn.onclick = () => {
+          const scores = [];
+          for(let k=0;k<t.questions;k++){
+            scores.push(parseFloat(document.querySelector(`[data-q="${juzNum}-${t.num}-${k}"]`).value) || 0);
+          }
+          const total = scores.reduce((a,b)=>a+b,0);
+          const resultInput = document.querySelector(`input[name="res-${juzNum}-${t.num}"]:checked`);
+          if(!resultInput){ showAlert("اختر النتيجة (ناجح/راسب/أسبوع مراجعة)"); return; }
+          const notes = document.querySelector(`[data-notes="${juzNum}-${t.num}"]`).value.trim();
+          const pp = juzProgress(sid, juzNum);
+          if(!pp.evaluations) pp.evaluations = {};
+          pp.evaluations[t.num] = {
+            evalNum: t.num, questionScores: scores, total, maxTotal: t.questions*10,
+            result: resultInput.value, notes, date: todayStr(), teacherName: SESSION.role==="admin" ? (DB.mainAdminName||"الإدارة") : (DB.groups.find(x=>x.id===s.groupId)?.teacherName||"")
+          };
+          saveJuzProgress(sid, juzNum, pp);
+          saveDB(DB);
+          drawJuzDetail(juzNum);
+          drawJuzList(DB.memorizationLevels.find(lv=>lv.id===selectedLevelId));
+          drawProgressTable(DB.memorizationLevels.find(lv=>lv.id===selectedLevelId));
+        };
+      });
+
+      if(showReview){
+        const rp = p.reviewWeek || {evaluations:{}};
+        document.getElementById("memReviewBox").innerHTML = tmpl.map(t=>{
+          const existing = rp.evaluations && rp.evaluations[t.num];
+          const maxT = t.questions*10;
+          return `
+          <div style="border:1px solid var(--gold);border-radius:8px;padding:10px;margin-bottom:10px;">
+            <strong>التقييم ${AR_NUM_WORDS[t.num]||t.num} (مراجعة)</strong> <span style="color:var(--muted);font-size:12px;">(${t.range} — ${t.questions} أسئلة)</span>
+            <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+              ${Array.from({length:t.questions}).map((_,i)=>`
+                <div style="width:70px;">
+                  <label style="font-size:11px;">س${AR_NUM_WORDS[i+1]||i+1}</label>
+                  <input type="number" min="0" max="10" data-rq="${juzNum}-${t.num}-${i}" value="${existing?existing.questionScores[i]:''}" style="width:100%;">
+                </div>`).join("")}
+              <div style="align-self:flex-end;font-weight:bold;color:var(--gold-d)"><span data-rtotal="${juzNum}-${t.num}">${existing?existing.total:0}</span> / ${maxT}</div>
+            </div>
+            <div class="row" style="margin-top:8px;">
+              <label style="font-weight:normal;"><input type="radio" name="rres-${juzNum}-${t.num}" value="ناجح" ${existing&&existing.result==="ناجح"?"checked":""}> ناجح/ة</label>
+              <label style="font-weight:normal;"><input type="radio" name="rres-${juzNum}-${t.num}" value="راسب" ${existing&&existing.result==="راسب"?"checked":""}> راسب/ة</label>
+            </div>
+            <button class="btn-gold btn-sm" style="margin-top:6px;" data-save-review="${juzNum}-${t.num}">حفظ</button>
+          </div>`;
+        }).join("");
+
+        tmpl.forEach(t=>{
+          Array.from({length:t.questions}).forEach((_,i)=>{
+            const inp = document.querySelector(`[data-rq="${juzNum}-${t.num}-${i}"]`);
+            inp.oninput = () => {
+              let sum = 0;
+              for(let k=0;k<t.questions;k++){
+                const v = parseFloat(document.querySelector(`[data-rq="${juzNum}-${t.num}-${k}"]`).value) || 0;
+                sum += v;
+              }
+              document.querySelector(`[data-rtotal="${juzNum}-${t.num}"]`).textContent = sum;
+            };
+          });
+          const saveBtn = document.querySelector(`[data-save-review="${juzNum}-${t.num}"]`);
+          if(saveBtn) saveBtn.onclick = () => {
+            const scores = [];
+            for(let k=0;k<t.questions;k++){
+              scores.push(parseFloat(document.querySelector(`[data-rq="${juzNum}-${t.num}-${k}"]`).value) || 0);
+            }
+            const total = scores.reduce((a,b)=>a+b,0);
+            const resultInput = document.querySelector(`input[name="rres-${juzNum}-${t.num}"]:checked`);
+            if(!resultInput){ showAlert("اختر النتيجة (ناجح/راسب)"); return; }
+            const pp = juzProgress(sid, juzNum);
+            if(!pp.reviewWeek) pp.reviewWeek = {evaluations:{}};
+            pp.reviewWeek.evaluations[t.num] = {
+              evalNum: t.num, questionScores: scores, total, maxTotal: t.questions*10,
+              result: resultInput.value, date: todayStr()
+            };
+            if(resultInput.value === "راسب") pp.secondFailure = true;
+            saveJuzProgress(sid, juzNum, pp);
+            saveDB(DB);
+            drawJuzDetail(juzNum);
+            drawJuzList(DB.memorizationLevels.find(lv=>lv.id===selectedLevelId));
+            drawProgressTable(DB.memorizationLevels.find(lv=>lv.id===selectedLevelId));
+          };
+        });
+      }
+    }
+
+    function drawProgressTable(level){
+      document.getElementById("memProgressTableWrap").innerHTML = `
+        <div class="card">
+          <h2>جدول متابعة التقدم — ${level.name}</h2>
+          <table>
+            <tr><th>الجزء</th><th>ت١</th><th>ت٢</th><th>ت٣</th><th>ت٤</th><th>المجموع</th><th>الحالة</th></tr>
+            ${level.juzList.map(jn=>{
+              const p = juzProgress(sid, jn);
+              const tmpl = juzTemplate(jn);
+              const st = juzStatus(sid, jn);
+              const cells = [1,2,3,4].map(n=>{
+                const t = tmpl.find(x=>x.num===n);
+                if(!t) return `<td style="color:var(--muted)">—</td>`;
+                const e = p.evaluations && p.evaluations[n];
+                return `<td>${e?e.total+'/'+e.maxTotal:'—'}</td>`;
+              }).join("");
+              const total = Object.values(p.evaluations||{}).reduce((s,e)=>s+e.total,0);
+              const maxTotal = juzMaxTotal(jn);
+              return `<tr><td style="font-weight:bold;">الجزء ${jn}</td>${cells}<td style="font-weight:bold;">${total}/${maxTotal}</td><td style="color:${st.color};font-weight:bold;">${st.label}</td></tr>`;
+            }).join("")}
+          </table>
+          ${levelStatus(sid, level) ? `<button class="btn-green" style="margin-top:10px;" id="issueLevelCertBtn">📜 إصدار وثيقة اعتماد المستوى</button><div id="levelCertMsg"></div>` : ""}
+        </div>`;
+      const certBtn = document.getElementById("issueLevelCertBtn");
+      if(certBtn) certBtn.onclick = () => printLevelCertificate(s, level);
+    }
+
+    draw();
+  }
+}
+
+function printLevelCertificate(student, level){
+  const teacherName = DB.groups.find(g=>g.id===student.groupId)?.teacherName || "—";
+  const adminName = DB.mainAdminName || "إدارة المركز";
+  document.getElementById("certPrintArea").innerHTML = `
+    <div class="cert-sheet" style="--cert-color:#1F6F3D;">
+      <div class="cert-checker-frame">
+        <div class="cert-checker top"></div><div class="cert-checker bottom"></div>
+        <div class="cert-checker left"></div><div class="cert-checker right"></div>
+      </div>
+      <div class="cert-gold-line"></div>
+      <div class="cert-frame-inner"></div>
+      <div class="cert-content">
+        <div class="cert-top-row">
+          <div class="cert-logo-circle"><img src="${LOGO_B64}" alt="شعار"></div>
+          <div class="cert-top-text">
+            <div class="cert-country">جمهورية جيبوتي</div>
+            <div class="cert-center-name-lg">مركز الريان لتحفيظ القرآن الكريم وعلومه</div>
+          </div>
+        </div>
+        <div class="cert-title-block">
+          <div class="cert-title-main">وثيقة اعتماد</div>
+        </div>
+        <p class="cert-intro" style="margin-top:10px;">يشهد مركز الريان لتحفيظ القرآن الكريم وعلومه بأن ${studentWord(student)}:</p>
+        <p class="cert-award-sentence"><strong>${student.name}</strong></p>
+        <p class="cert-detail-text">قد أتمّ${student.gender==="أنثى"?"ت":""} بنجاح جميع تقييمات <strong>${level.name}</strong> (من الجزء ${level.juzFrom} إلى الجزء ${level.juzTo})،
+        وأبدى${student.gender==="أنثى"?"ت":""} مستوى مرضياً في الحفظ والمراجعة، ويحق له${student.gender==="أنثى"?"ا":""} الانتقال إلى المستوى التالي — بإذن الله.</p>
+        <p class="cert-dua">وفقه الله وسدده في مسيرة حفظ كتابه الكريم</p>
+        <div class="cert-sign-row">
+          <div>مدير(ة) المركز:<strong>${adminName}</strong></div>
+          <div>المعلم(ة) المسؤول(ة):<strong>${teacherName}</strong></div>
+        </div>
+        <div class="cert-footer2">تأسست عام 2014م · Markaz Al-Rayyan Iltahfeedh Al-Quran Al-Kareem wa Uloomih · Djibouti</div>
+      </div>
+    </div>`;
+  document.body.classList.add("printing-cert");
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => { document.body.classList.remove("printing-cert"); }, 500);
+  }, 150);
+}
+
 function renderAdminView(c){
   const opts = DB.groups.map(g=>`<option value="${g.id}">${g.name}</option>`).join("");
   c.innerHTML = `
@@ -3662,6 +4045,43 @@ function renderTeacher(){
 }
 
 /* ---------------- Parent Portal ---------------- */
+function renderParentMemorizationCard(s){
+  const levels = PARENT_STATE.memorizationLevels;
+  const progress = PARENT_STATE.memorization[s.id] || {};
+  function juzResultLabel(jn){
+    const p = progress[jn];
+    const tmpl = jn===30 ? PARENT_STATE.memorizationTemplateJuz30 : PARENT_STATE.memorizationTemplateDefault;
+    if(!p || !p.evaluations) return {label:"لم يبدأ", color:"var(--muted)"};
+    const evalVals = Object.values(p.evaluations);
+    const allPassed = tmpl.every(t => p.evaluations[t.num] && p.evaluations[t.num].result==="ناجح");
+    if(allPassed) return {label:"مكتمل ✅", color:"var(--present)"};
+    const reviewFailed = p.reviewWeek && Object.values(p.reviewWeek.evaluations||{}).some(e=>e.result==="راسب");
+    if(reviewFailed) return {label:"⛔ إعادة المستوى", color:"var(--error)"};
+    const anyFail = tmpl.some(t => p.evaluations[t.num] && (p.evaluations[t.num].result==="راسب" || p.evaluations[t.num].result==="أسبوع مراجعة"));
+    if(anyFail) return {label:"📘 أسبوع مراجعة", color:"var(--late)"};
+    return evalVals.length ? {label:"جارٍ", color:"var(--gold-d)"} : {label:"لم يبدأ", color:"var(--muted)"};
+  }
+  let currentLevel = null, currentJuz = null;
+  outer: for(const lv of levels){
+    for(const jn of lv.juzList){
+      if(juzResultLabel(jn).label !== "مكتمل ✅"){ currentLevel = lv; currentJuz = jn; break outer; }
+    }
+  }
+  const displayLevel = currentLevel || levels[levels.length-1];
+  return `
+    <div class="card">
+      <h2>📖 متابعة حفظ القرآن الكريم</h2>
+      <p style="color:var(--muted);font-size:13px;">${currentJuz ? `الموقع الحالي: الجزء ${currentJuz} — ${currentLevel.name}` : "✅ أكمل جميع المستويات، بارك الله فيه/ا"}</p>
+      <table>
+        <tr><th>الجزء</th><th>الحالة</th></tr>
+        ${displayLevel.juzList.map(jn=>{
+          const r = juzResultLabel(jn);
+          return `<tr><td style="font-weight:bold;">الجزء ${jn}</td><td style="color:${r.color};font-weight:bold;">${r.label}</td></tr>`;
+        }).join("")}
+      </table>
+    </div>`;
+}
+
 function renderParent(){
   if(!PARENT_STATE){ SESSION = null; render(); return; }
   const s = PARENT_STATE.students.find(x=>x.id===SESSION.studentId) || PARENT_STATE.students[0];
@@ -3776,6 +4196,8 @@ function renderParent(){
             </div>`).join("")}
         </div>` : ""}
     </div>` : ""}
+
+    ${s.curriculum==="quran" && PARENT_STATE.memorizationLevels && PARENT_STATE.memorizationLevels.length ? renderParentMemorizationCard(s) : ""}
 
     <div class="card">
       <h2>📝 تقديم عذر</h2>
