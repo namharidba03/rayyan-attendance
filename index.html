@@ -3255,7 +3255,7 @@ function renderAdminExcuses(c){
     if(!sid){ msg.innerHTML = `<div class="msg err">اختر الطالب أولاً من القائمة</div>`; return; }
     if(!reason){ msg.innerHTML = `<div class="msg err">اكتب سبب العذر</div>`; return; }
     if(to < from){ msg.innerHTML = `<div class="msg err">تاريخ النهاية قبل تاريخ البداية</div>`; return; }
-    addExcuse(sid, {id:uid(), studentId:sid, from, to, reason, createdAt:todayStr()});
+    addExcuse(sid, {id:uid(), studentId:sid, from, to, reason, status:"قيد الانتظار", createdAt:todayStr()});
     saveDB(DB);
     msg.innerHTML = `<div class="msg ok">تم حفظ العذر وسيظهر للمعلم/ة تلقائياً</div>`;
     document.getElementById("excReason").value = "";
@@ -3270,17 +3270,60 @@ function renderAdminExcuses(c){
       const s = DB.students.find(x=>x.id===e.studentId);
       const g = s ? DB.groups.find(x=>x.id===s.groupId) : null;
       const rangeTxt = e.from===e.to ? fmtDate(e.from) : `${e.from} → ${e.to}`;
+      const status = e.status || "قيد الانتظار";
+      const statusColor = status==="مقبول" ? "var(--present)" : status==="مرفوض" ? "var(--error)" : "var(--late)";
+      const actionBtns = status==="قيد الانتظار"
+        ? `<button class="btn-green btn-sm" data-accept-exc="${e.id}">✅ قبول</button> <button class="btn-danger btn-sm" data-reject-exc="${e.id}">❌ رفض</button>`
+        : `<span style="color:var(--muted);font-size:11px;">${e.adminResponse ? '📝 '+e.adminResponse : ''}</span>`;
       return `<tr>
         <td class="name-cell">${s? s.code+" — "+s.name : "(طالب محذوف)"}</td>
         <td>${g?g.name:"—"}</td>
         <td>${rangeTxt}</td>
         <td>${e.reason}</td>
+        <td style="color:${statusColor};font-weight:bold;">${status}</td>
+        <td>${actionBtns}</td>
         <td><button class="btn-danger btn-sm" data-del-exc="${e.id}">حذف</button></td>
       </tr>`;
     }).join("");
     document.getElementById("excTable").innerHTML = `
-      <tr><th>الطالب</th><th>المجموعة</th><th>الفترة</th><th>السبب</th><th>حذف</th></tr>
-      ${rows || `<tr><td colspan="5" style="color:var(--muted)">لا توجد أعذار مسجّلة</td></tr>`}`;
+      <tr><th>الطالب</th><th>المجموعة</th><th>الفترة</th><th>السبب</th><th>الحالة</th><th>الإجراء</th><th>حذف</th></tr>
+      ${rows || `<tr><td colspan="7" style="color:var(--muted)">لا توجد أعذار مسجّلة</td></tr>`}`;
+    document.querySelectorAll("[data-accept-exc]").forEach(btn=>{
+      btn.onclick = () => {
+        const e = allExcuses().find(x=>x.id===btn.dataset.acceptExc);
+        if(!e) return;
+        e.status = "مقبول";
+        e.respondedAt = new Date().toISOString();
+        saveDB(DB);
+        drawExcTable();
+      };
+    });
+    document.querySelectorAll("[data-reject-exc]").forEach(btn=>{
+      btn.onclick = () => {
+        const e = allExcuses().find(x=>x.id===btn.dataset.rejectExc);
+        if(!e) return;
+        openModal(`
+          <h3>رفض العذر — اكتب السبب</h3>
+          <p style="color:var(--muted);font-size:13px;">ستصل هذه الرسالة إلى ولي الأمر/الطالب مباشرة.</p>
+          <textarea id="rejectReasonInput" rows="4" style="width:100%;font-family:inherit;padding:8px;border:1px solid var(--border);border-radius:8px;" placeholder="مثال: يُرجى إحضار تقرير طبي..."></textarea>
+          <div id="rejectMsg"></div>
+          <div class="row" style="justify-content:flex-end;margin-top:16px;">
+            <button class="btn-outline btn-sm" id="rejectCancel">إلغاء</button>
+            <button class="btn-danger btn-sm" id="rejectConfirm">تأكيد الرفض</button>
+          </div>`);
+        document.getElementById("rejectCancel").onclick = closeModal;
+        document.getElementById("rejectConfirm").onclick = () => {
+          const reasonText = document.getElementById("rejectReasonInput").value.trim();
+          if(!reasonText){ document.getElementById("rejectMsg").innerHTML = `<div class="msg err">اكتب سبب الرفض</div>`; return; }
+          e.status = "مرفوض";
+          e.adminResponse = reasonText;
+          e.respondedAt = new Date().toISOString();
+          saveDB(DB);
+          closeModal();
+          drawExcTable();
+        };
+      };
+    });
     document.querySelectorAll("[data-del-exc]").forEach(btn=>{
       btn.onclick = () => {
         const e = allExcuses().find(x=>x.id===btn.dataset.delExc);
@@ -4495,6 +4538,21 @@ function renderParent(){
 
     ${s.curriculum==="quran" && PARENT_STATE.memorizationLevels && PARENT_STATE.memorizationLevels.length ? renderParentMemorizationCard(s) : ""}
 
+    ${(PARENT_STATE.excuses[s.id]||[]).length ? `
+    <div class="card">
+      <h2>📋 أعذاري المرسلة</h2>
+      ${(PARENT_STATE.excuses[s.id]||[]).slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).map(e=>{
+        const status = e.status || "قيد الانتظار";
+        const statusColor = status==="مقبول" ? "var(--present)" : status==="مرفوض" ? "var(--error)" : "var(--late)";
+        const rangeTxt = e.from===e.to ? fmtDate(e.from) : `${e.from} → ${e.to}`;
+        return `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">
+          <span style="color:${statusColor};font-weight:bold;">${status}</span>
+          <span style="color:var(--muted);"> — ${rangeTxt} — ${e.reason}</span>
+          ${status==="مرفوض" && e.adminResponse ? `<p style="margin:6px 0 0;color:var(--error);background:#FDECEA;padding:6px 8px;border-radius:6px;">📝 رد الإدارة: ${e.adminResponse}</p>` : ""}
+        </div>`;
+      }).join("")}
+    </div>` : ""}
+
     <div class="card">
       <h2>📝 تقديم عذر</h2>
       <p style="color:var(--muted);font-size:13px;">إذا كان ${studentWord(s)} سيتغيّب لسبب معين، يمكنك تسجيل عذر هنا ليصل مباشرة إلى المعلم/ة.</p>
@@ -4524,13 +4582,13 @@ function renderParent(){
     const msg = document.getElementById("pExcMsg");
     if(!reason){ msg.innerHTML = `<div class="msg err">اكتب سبب العذر</div>`; return; }
     if(to < from){ msg.innerHTML = `<div class="msg err">تاريخ النهاية قبل تاريخ البداية</div>`; return; }
-    const newExcuse = {id:uid(), studentId:s.id, from, to, reason, createdAt:todayStr()};
+    const newExcuse = {id:uid(), studentId:s.id, from, to, reason, status:"قيد الانتظار", createdAt:todayStr()};
     // Targeted write: only touches this student's excuses bucket, allowed by restricted parent rules
     firebase.database().ref("rayyanDB/excuses/"+s.id+"/"+newExcuse.id).set(newExcuse).then(() => {
       if(!PARENT_STATE.excuses[s.id]) PARENT_STATE.excuses[s.id] = [];
       PARENT_STATE.excuses[s.id].push(newExcuse);
       msg.innerHTML = `<div class="msg ok">تم إرسال العذر بنجاح</div>`;
-      document.getElementById("pExcReason").value = "";
+      setTimeout(()=>render(), 800);
     }).catch(err => {
       msg.innerHTML = `<div class="msg err">تعذّر الإرسال: ${err.message}</div>`;
     });
