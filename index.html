@@ -333,7 +333,13 @@ Nous vous remercions.`,
       {num:1, range:"الحزب الأول", questions:3},
       {num:2, range:"التقييم العام للجزء", questions:6}
     ],
-    memorizationProgress: {}
+    memorizationProgress: {},
+    scheduleSessions: [
+      {id:1, name:"الفوج الأول", timeLabel:"بعد المغرب حتى 20:30"},
+      {id:2, name:"الفوج الثاني", timeLabel:"20:40 حتى 22:00"},
+      {id:3, name:"فوج العصر", timeLabel:"بعد العصر حتى 18:00"}
+    ],
+    groupSchedule: {}
   };
 }
 function migrateDB(db){
@@ -419,6 +425,8 @@ function migrateDB(db){
   if(!db.staffSalaries) db.staffSalaries = [];
   if(!db.salaryPayments) db.salaryPayments = {};
   if(!db.expenses) db.expenses = [];
+  if(!db.scheduleSessions) db.scheduleSessions = defaultDB().scheduleSessions;
+  if(!db.groupSchedule) db.groupSchedule = {};
   if(!db.memorizationLevels) db.memorizationLevels = defaultDB().memorizationLevels;
   if(!db.memorizationTemplateJuz30) db.memorizationTemplateJuz30 = defaultDB().memorizationTemplateJuz30;
   if(!db.memorizationTemplateDefault) db.memorizationTemplateDefault = defaultDB().memorizationTemplateDefault;
@@ -1208,6 +1216,7 @@ function renderAdmin(){
         <div class="tab ${adminTab==='search'?'active':''}" data-t="search">🔎 بحث عن طالب</div>
         <div class="tab ${adminTab==='report'?'active':''}" data-t="report">📊 التقرير الشامل</div>
         <div class="tab ${adminTab==='finance'?'active':''}" data-t="finance">💼 الحسابات المالية</div>
+        <div class="tab ${adminTab==='schedule'?'active':''}" data-t="schedule">🗓️ الجدول الزمني</div>
         <div class="tab ${adminTab==='backup'?'active':''}" data-t="backup">💾 نسخ احتياطي</div>
         <div class="tab ${adminTab==='settings'?'active':''}" data-t="settings">⚙️ الإعدادات</div>
       </div>
@@ -1232,6 +1241,7 @@ function renderAdmin(){
   if(adminTab==="search") return renderAdminSearch(c);
   if(adminTab==="report") return renderAdminReport(c);
   if(adminTab==="finance") return renderAdminFinance(c);
+  if(adminTab==="schedule") return renderAdminSchedule(c);
   if(adminTab==="backup") return renderAdminBackup(c);
   if(adminTab==="settings") return renderAdminSettings(c);
 }
@@ -3954,6 +3964,108 @@ function renderAdminFinance(c){
     drawExpenses();
   }
   drawAll();
+}
+
+/* ---------------- Admin Schedule (الجدول الزمني) ---------------- */
+function renderAdminSchedule(c){
+  const DAYS = [{key:"sat",label:"السبت"},{key:"sun",label:"الأحد"},{key:"mon",label:"الاثنين"},{key:"tue",label:"الثلاثاء"},{key:"wed",label:"الأربعاء"}];
+
+  function drawAssignForm(){
+    return `
+    <div class="card no-print">
+      <h2>🗓️ تحديد فوج كل مجموعة</h2>
+      <p style="color:var(--muted);font-size:13px;">الأيام الافتراضية: السبت-الأربعاء (الخميس والجمعة عطلة المركز).</p>
+      <table>
+        <tr><th>المجموعة</th><th>المعلم/ة</th><th>الفوج</th><th>الأيام</th><th>حفظ</th></tr>
+        ${DB.groups.map(g=>{
+          const sched = DB.groupSchedule[g.id] || {sessionId:"", days:["sat","sun","mon","tue","wed"]};
+          return `<tr>
+            <td class="name-cell">${g.name}</td>
+            <td>${g.teacherName||"—"}</td>
+            <td>
+              <select data-sched-session="${g.id}">
+                <option value="">— اختر —</option>
+                ${DB.scheduleSessions.map(ss=>`<option value="${ss.id}" ${sched.sessionId==ss.id?"selected":""}>${ss.name} (${ss.timeLabel})</option>`).join("")}
+              </select>
+            </td>
+            <td>
+              ${DAYS.map(d=>`<label style="font-weight:normal;font-size:12px;margin-left:6px;"><input type="checkbox" data-sched-day="${g.id}-${d.key}" ${sched.days.includes(d.key)?"checked":""}> ${d.label}</label>`).join("")}
+            </td>
+            <td><button class="btn-green btn-sm" data-save-sched="${g.id}">حفظ</button></td>
+          </tr>`;
+        }).join("") || `<tr><td colspan="5" style="color:var(--muted)">لا توجد مجموعات بعد</td></tr>`}
+      </table>
+      <div id="schedSaveMsg"></div>
+    </div>`;
+  }
+
+  function conflicts(){
+    // Detect same teacher assigned to 2+ groups in the same session with overlapping days
+    const bySessionTeacher = {};
+    const warnings = [];
+    DB.groups.forEach(g=>{
+      const sched = DB.groupSchedule[g.id];
+      if(!sched || !sched.sessionId || !g.teacherName) return;
+      const key = sched.sessionId+"|"+g.teacherName;
+      if(!bySessionTeacher[key]) bySessionTeacher[key] = [];
+      bySessionTeacher[key].push({g, days:sched.days});
+    });
+    Object.values(bySessionTeacher).forEach(list=>{
+      if(list.length < 2) return;
+      for(let i=0;i<list.length;i++){
+        for(let j=i+1;j<list.length;j++){
+          const overlap = list[i].days.filter(d=>list[j].days.includes(d));
+          if(overlap.length){
+            const ss = DB.scheduleSessions.find(x=>x.id==DB.groupSchedule[list[i].g.id].sessionId);
+            warnings.push(`⚠️ المعلم/ة <strong>${list[i].g.teacherName}</strong> مُسند/ة إلى مجموعتين في نفس الفوج (${ss?ss.name:""}) بأيام متداخلة: <strong>${list[i].g.name}</strong> و<strong>${list[j].g.name}</strong>`);
+          }
+        }
+      }
+    });
+    return warnings;
+  }
+
+  function drawGrid(){
+    const warnings = conflicts();
+    return `
+      ${warnings.length ? `<div class="card" style="border-right:5px solid var(--error);">
+        <h2>⚠️ تنبيهات تعارض</h2>
+        ${warnings.map(w=>`<p style="margin:4px 0;font-size:13px;">${w}</p>`).join("")}
+      </div>` : ""}
+      <div class="card">
+        <h2>📋 الجدول الأسبوعي</h2>
+        <table>
+          <tr><th>الفوج</th>${DAYS.map(d=>`<th>${d.label}</th>`).join("")}</tr>
+          ${DB.scheduleSessions.map(ss=>{
+            const cells = DAYS.map(d=>{
+              const groupsHere = DB.groups.filter(g=>{
+                const sched = DB.groupSchedule[g.id];
+                return sched && sched.sessionId==ss.id && sched.days.includes(d.key);
+              });
+              return `<td style="font-size:12px;">${groupsHere.map(g=>`<div style="margin-bottom:3px;"><strong style="color:var(--green-d)">${g.name}</strong><br><span style="color:var(--muted)">${g.teacherName||"—"}</span></div>`).join("") || `<span style="color:var(--muted)">—</span>`}</td>`;
+            }).join("");
+            return `<tr><td style="font-weight:bold;">${ss.name}<br><span style="color:var(--muted);font-size:11px;font-weight:normal;">${ss.timeLabel}</span></td>${cells}</tr>`;
+          }).join("")}
+        </table>
+      </div>`;
+  }
+
+  function draw(){
+    c.innerHTML = drawAssignForm() + `<div id="schedGridWrap">${drawGrid()}</div>`;
+    document.querySelectorAll("[data-save-sched]").forEach(btn=>{
+      btn.onclick = () => {
+        const gid = btn.dataset.saveSched;
+        const sessionId = document.querySelector(`[data-sched-session="${gid}"]`).value;
+        const days = DAYS.filter(d=>document.querySelector(`[data-sched-day="${gid}-${d.key}"]`).checked).map(d=>d.key);
+        if(!sessionId){ document.getElementById("schedSaveMsg").innerHTML = `<div class="msg err">اختر الفوج أولاً</div>`; return; }
+        DB.groupSchedule[gid] = {sessionId, days};
+        saveDB(DB);
+        document.getElementById("schedSaveMsg").innerHTML = `<div class="msg ok">تم الحفظ</div>`;
+        document.getElementById("schedGridWrap").innerHTML = drawGrid();
+      };
+    });
+  }
+  draw();
 }
 
 function renderAdminBackup(c){
