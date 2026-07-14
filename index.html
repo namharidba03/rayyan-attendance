@@ -460,6 +460,45 @@ const dbRef = firebase.database().ref("rayyanDB");
 let DB = null;
 let SAVE_ERROR_SHOWN = false;
 
+/* ---------------- i18n (Arabic / French) ---------------- */
+let LANG = localStorage.getItem("rayyan_lang") || "ar";
+const I18N = {
+  ar: {
+    login_title: "تسجيل الدخول",
+    login_choose_role: "اختر نوع الحساب",
+    role_admin: "🛡️ الإدارة",
+    role_teacher: "📘 معلم/ة",
+    role_parent: "👨‍👩‍👧 ولي الأمر / الطالب",
+    role_proctor: "🧑‍🏫 مراقب امتحان",
+    email_label: "البريد الإلكتروني",
+    password_label: "كلمة السر",
+    login_btn: "دخول",
+    forgot_password: "نسيت كلمة السر؟",
+    version_label: "إصدار النظام"
+  },
+  fr: {
+    login_title: "Connexion",
+    login_choose_role: "Choisissez le type de compte",
+    role_admin: "🛡️ Administration",
+    role_teacher: "📘 Enseignant(e)",
+    role_parent: "👨‍👩‍👧 Parent / Élève",
+    role_proctor: "🧑‍🏫 Surveillant d'examen",
+    email_label: "E-mail",
+    password_label: "Mot de passe",
+    login_btn: "Connexion",
+    forgot_password: "Mot de passe oublié ?",
+    version_label: "Version du système"
+  }
+};
+function t(key){
+  return (I18N[LANG] && I18N[LANG][key]) || (I18N.ar[key]) || key;
+}
+function setLang(lang){
+  LANG = lang;
+  localStorage.setItem("rayyan_lang", lang);
+  render();
+}
+
 function stripUndefined(value){
   if(value === undefined) return null;
   if(value === null) return null;
@@ -897,19 +936,25 @@ function renderLogin(){
   app.innerHTML = `
   <div class="center">
     <div class="card login-card">
-      <img src="${LOGO_B64}" alt="شعار المركز" style="width:100px;height:auto;display:block;margin:0 auto 14px;border-radius:8px;">
-      <h2>تسجيل الدخول</h2>
-      <p style="color:var(--muted);font-size:13px;">اختر نوع الحساب</p>
-      <div class="role-btns">
-        <button class="btn-green" id="btnAdmin">🛡️ الإدارة</button>
-        <button class="btn-gold" id="btnTeacher">📘 معلم/ة</button>
+      <div style="text-align:left;margin-bottom:6px;">
+        <button class="btn-outline btn-sm" id="langAr" style="${LANG==='ar'?'font-weight:bold;background:var(--green-d);color:#fff;':''}">🇸🇦 عربي</button>
+        <button class="btn-outline btn-sm" id="langFr" style="${LANG==='fr'?'font-weight:bold;background:var(--green-d);color:#fff;':''}">🇫🇷 Français</button>
       </div>
-      <button class="btn-outline" style="width:100%;margin-top:8px;" id="btnParent">👨‍👩‍👧 ولي الأمر / الطالب</button>
-      <button class="btn-outline" style="width:100%;margin-top:8px;" id="btnProctor">🧑‍🏫 مراقب امتحان</button>
+      <img src="${LOGO_B64}" alt="شعار المركز" style="width:100px;height:auto;display:block;margin:0 auto 14px;border-radius:8px;">
+      <h2>${t("login_title")}</h2>
+      <p style="color:var(--muted);font-size:13px;">${t("login_choose_role")}</p>
+      <div class="role-btns">
+        <button class="btn-green" id="btnAdmin">${t("role_admin")}</button>
+        <button class="btn-gold" id="btnTeacher">${t("role_teacher")}</button>
+      </div>
+      <button class="btn-outline" style="width:100%;margin-top:8px;" id="btnParent">${t("role_parent")}</button>
+      <button class="btn-outline" style="width:100%;margin-top:8px;" id="btnProctor">${t("role_proctor")}</button>
       <div id="loginForm" style="margin-top:18px;"></div>
-      <p style="color:var(--muted);font-size:10px;margin-top:14px;">إصدار النظام: ${APP_VERSION}</p>
+      <p style="color:var(--muted);font-size:10px;margin-top:14px;">${t("version_label")}: ${APP_VERSION}</p>
     </div>
   </div>`;
+  document.getElementById("langAr").onclick = () => setLang("ar");
+  document.getElementById("langFr").onclick = () => setLang("fr");
   document.getElementById("btnAdmin").onclick = () => showAdminLogin();
   document.getElementById("btnParent").onclick = () => showParentLogin();
   document.getElementById("btnTeacher").onclick = () => loadTeacherLoginData();
@@ -920,13 +965,13 @@ function showAdminLogin(){
   const f = document.getElementById("loginForm");
   const savedEmail = localStorage.getItem("rayyan_last_admin_email") || "";
   f.innerHTML = `
-    <label>البريد الإلكتروني</label>
+    <label>${t("email_label")}</label>
     <input id="adminUser" style="width:100%" placeholder="example@gmail.com" value="${savedEmail.replace(/"/g,'&quot;')}">
-    <label style="margin-top:10px;">كلمة السر</label>
+    <label style="margin-top:10px;">${t("password_label")}</label>
     <input type="password" id="adminPass" style="width:100%" placeholder="••••••">
-    <button class="btn-green" style="width:100%;margin-top:10px;" id="adminGo">دخول</button>
+    <button class="btn-green" style="width:100%;margin-top:10px;" id="adminGo">${t("login_btn")}</button>
     <div style="text-align:center;margin-top:10px;">
-      <a href="#" id="forgotPassLink" style="font-size:12px;color:var(--muted);text-decoration:underline;">نسيت كلمة السر؟</a>
+      <a href="#" id="forgotPassLink" style="font-size:12px;color:var(--muted);text-decoration:underline;">${t("forgot_password")}</a>
     </div>
     <div id="loginMsg"></div>`;
   document.getElementById("forgotPassLink").onclick = (e) => {
