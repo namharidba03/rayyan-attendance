@@ -312,6 +312,9 @@ Nous vous remercions.`,
     studentsPublic: {},
     exams: {},
     examResults: {},
+    staffSalaries: [],
+    salaryPayments: {},
+    expenses: [],
     memorizationLevels: [
       {id:1, name:"المستوى العام الأول", juzFrom:30, juzTo:26, juzList:[30,29,28,27,26]},
       {id:2, name:"المستوى العام الثاني", juzFrom:25, juzTo:21, juzList:[25,24,23,22,21]},
@@ -413,6 +416,9 @@ function migrateDB(db){
     db.exams = rebuilt;
   }
   if(!db.examResults) db.examResults = {};
+  if(!db.staffSalaries) db.staffSalaries = [];
+  if(!db.salaryPayments) db.salaryPayments = {};
+  if(!db.expenses) db.expenses = [];
   if(!db.memorizationLevels) db.memorizationLevels = defaultDB().memorizationLevels;
   if(!db.memorizationTemplateJuz30) db.memorizationTemplateJuz30 = defaultDB().memorizationTemplateJuz30;
   if(!db.memorizationTemplateDefault) db.memorizationTemplateDefault = defaultDB().memorizationTemplateDefault;
@@ -1201,6 +1207,7 @@ function renderAdmin(){
         <div class="tab ${adminTab==='view'?'active':''}" data-t="view">📋 متابعة الحضور</div>
         <div class="tab ${adminTab==='search'?'active':''}" data-t="search">🔎 بحث عن طالب</div>
         <div class="tab ${adminTab==='report'?'active':''}" data-t="report">📊 التقرير الشامل</div>
+        <div class="tab ${adminTab==='finance'?'active':''}" data-t="finance">💼 الحسابات المالية</div>
         <div class="tab ${adminTab==='backup'?'active':''}" data-t="backup">💾 نسخ احتياطي</div>
         <div class="tab ${adminTab==='settings'?'active':''}" data-t="settings">⚙️ الإعدادات</div>
       </div>
@@ -1224,6 +1231,7 @@ function renderAdmin(){
   if(adminTab==="view") return renderAdminView(c);
   if(adminTab==="search") return renderAdminSearch(c);
   if(adminTab==="report") return renderAdminReport(c);
+  if(adminTab==="finance") return renderAdminFinance(c);
   if(adminTab==="backup") return renderAdminBackup(c);
   if(adminTab==="settings") return renderAdminSettings(c);
 }
@@ -3739,6 +3747,213 @@ function renderAdminReport(c){
         </div>`).join("")}
       </div>` : ""}`;
   }
+}
+
+/* ---------------- Admin Financial Accounts (الحسابات المالية) ---------------- */
+function renderAdminFinance(c){
+  const now = new Date();
+  const monthNames = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+  c.innerHTML = `
+    <div class="card no-print">
+      <h2>📅 عرض شهر</h2>
+      <div class="row">
+        <div><label>الشهر</label><select id="finMonth">${monthNames.map((n,i)=>`<option value="${i+1}" ${i+1===now.getMonth()+1?"selected":""}>${n}</option>`).join("")}</select></div>
+        <div><label>السنة</label><input type="number" id="finYear" value="${now.getFullYear()}" style="width:90px;"></div>
+      </div>
+    </div>
+    <div id="finOverviewWrap"></div>
+    <div id="finSalariesWrap"></div>
+    <div id="finExpensesWrap"></div>`;
+
+  document.getElementById("finMonth").onchange = drawAll;
+  document.getElementById("finYear").onchange = drawAll;
+
+  function getYM(){
+    return {month: parseInt(document.getElementById("finMonth").value), year: parseInt(document.getElementById("finYear").value)};
+  }
+
+  function drawOverview(){
+    const {month, year} = getYM();
+    let feeIncome = 0;
+    DB.students.forEach(s=>{
+      feeIncome += computePaidAmount(s.id, year, month);
+    });
+    let salaryExpense = 0;
+    DB.staffSalaries.forEach(st=>{
+      const payments = Object.values(DB.salaryPayments[st.id]||{}).filter(p=>p.year===year && p.month===month);
+      salaryExpense += payments.reduce((s,p)=>s+p.amount,0);
+    });
+    const generalExpense = DB.expenses.filter(e=>{
+      const d = new Date(e.date);
+      return d.getFullYear()===year && d.getMonth()+1===month;
+    }).reduce((s,e)=>s+e.amount,0);
+    const totalExpense = salaryExpense + generalExpense;
+    const net = feeIncome - totalExpense;
+
+    document.getElementById("finOverviewWrap").innerHTML = `
+      <div class="card">
+        <h2>📊 نظرة مالية شاملة — ${monthNames[month-1]} ${year}</h2>
+        <div class="stat-cards">
+          <div class="stat"><div class="n" style="color:var(--present)">${feeIncome.toLocaleString()}</div><div class="l">الدخل (رسوم الطلاب) DJF</div></div>
+          <div class="stat"><div class="n" style="color:var(--error)">${salaryExpense.toLocaleString()}</div><div class="l">الرواتب المدفوعة DJF</div></div>
+          <div class="stat"><div class="n" style="color:var(--error)">${generalExpense.toLocaleString()}</div><div class="l">المصروفات العامة DJF</div></div>
+          <div class="stat"><div class="n" style="color:${net>=0?'var(--present)':'var(--error)'}">${net.toLocaleString()}</div><div class="l">الرصيد الصافي DJF</div></div>
+        </div>
+      </div>`;
+  }
+
+  function drawSalaries(){
+    const {month, year} = getYM();
+    const staffOptions = DB.groups.map(g=>g.teacherName).filter((v,i,a)=>v && a.indexOf(v)===i);
+    document.getElementById("finSalariesWrap").innerHTML = `
+      <div class="card no-print">
+        <h2>💰 الرواتب</h2>
+        <div class="row">
+          <div><label>اسم الموظف/ة</label><input id="staffName" placeholder="مثال: أحمد محمد" list="staffNamesList">
+            <datalist id="staffNamesList">${staffOptions.map(n=>`<option value="${n}">`).join("")}</datalist>
+          </div>
+          <div><label>الوظيفة</label><input id="staffRole" placeholder="مثال: معلم، إداري..."></div>
+          <div><label>الراتب الشهري (DJF)</label><input type="number" id="staffAmount" placeholder="مثال: 50000"></div>
+          <div style="align-self:flex-end;"><button class="btn-green" id="addStaffBtn">+ إضافة موظف/ة</button></div>
+        </div>
+        <div id="staffMsg"></div>
+      </div>
+      <div class="card">
+        <h2>قائمة الموظفين — رواتب ${monthNames[month-1]} ${year}</h2>
+        <table>
+          <tr><th>الاسم</th><th>الوظيفة</th><th>الراتب الشهري</th><th>المدفوع هذا الشهر</th><th>المتبقي</th><th>تسجيل دفعة</th><th>حذف</th></tr>
+          ${DB.staffSalaries.map(st=>{
+            const paid = Object.values(DB.salaryPayments[st.id]||{}).filter(p=>p.year===year && p.month===month).reduce((s,p)=>s+p.amount,0);
+            const remaining = Math.max(st.monthlyAmount - paid, 0);
+            return `<tr>
+              <td class="name-cell">${st.staffName}</td>
+              <td>${st.role||"—"}</td>
+              <td>${st.monthlyAmount.toLocaleString()} DJF</td>
+              <td style="color:var(--present);font-weight:bold;">${paid.toLocaleString()} DJF</td>
+              <td style="color:${remaining>0?'var(--error)':'var(--muted)'};font-weight:bold;">${remaining.toLocaleString()} DJF</td>
+              <td>${remaining>0?`<button class="btn-outline btn-sm" data-pay-staff="${st.id}">💵 تسجيل دفعة</button>`:'<span style="color:var(--present);font-size:12px;">✓ مكتمل</span>'}</td>
+              <td><button class="btn-danger btn-sm" data-del-staff="${st.id}">حذف</button></td>
+            </tr>`;
+          }).join("") || `<tr><td colspan="7" style="color:var(--muted)">لا يوجد موظفون بعد</td></tr>`}
+        </table>
+      </div>`;
+
+    document.getElementById("addStaffBtn").onclick = () => {
+      const staffName = document.getElementById("staffName").value.trim();
+      const role = document.getElementById("staffRole").value.trim();
+      const monthlyAmount = parseInt(document.getElementById("staffAmount").value) || 0;
+      const msg = document.getElementById("staffMsg");
+      if(!staffName || monthlyAmount<=0){ msg.innerHTML = `<div class="msg err">أدخل الاسم والراتب</div>`; return; }
+      DB.staffSalaries.push({id:uid(), staffName, role, monthlyAmount});
+      saveDB(DB);
+      document.getElementById("staffName").value = "";
+      document.getElementById("staffRole").value = "";
+      document.getElementById("staffAmount").value = "";
+      msg.innerHTML = `<div class="msg ok">تمت الإضافة</div>`;
+      drawSalaries();
+    };
+    document.querySelectorAll("[data-del-staff]").forEach(btn=>{
+      btn.onclick = () => {
+        showConfirm("حذف هذا الموظف/ة من قائمة الرواتب؟", () => {
+          DB.staffSalaries = DB.staffSalaries.filter(x=>x.id!==btn.dataset.delStaff);
+          saveDB(DB); drawSalaries();
+        });
+      };
+    });
+    document.querySelectorAll("[data-pay-staff]").forEach(btn=>{
+      btn.onclick = () => {
+        const st = DB.staffSalaries.find(x=>x.id===btn.dataset.payStaff);
+        const paidSoFar = Object.values(DB.salaryPayments[st.id]||{}).filter(p=>p.year===year && p.month===month).reduce((s,p)=>s+p.amount,0);
+        const remainingNow = Math.max(st.monthlyAmount - paidSoFar, 0);
+        openModal(`
+          <h3>تسجيل دفعة راتب: ${st.staffName}</h3>
+          <p style="color:var(--muted);font-size:13px;">المتبقي حالياً: <strong>${remainingNow.toLocaleString()} DJF</strong> — ${monthNames[month-1]} ${year}</p>
+          <label>المبلغ (DJF)</label>
+          <input type="number" id="mSalaryAmount" value="${remainingNow}">
+          <div id="mSalaryMsg"></div>
+          <div class="row" style="justify-content:flex-end;margin-top:16px;">
+            <button class="btn-outline btn-sm" id="mSalaryCancel">إلغاء</button>
+            <button class="btn-green btn-sm" id="mSalarySave">حفظ</button>
+          </div>`);
+        document.getElementById("mSalaryCancel").onclick = closeModal;
+        document.getElementById("mSalarySave").onclick = () => {
+          const amount = parseInt(document.getElementById("mSalaryAmount").value) || 0;
+          if(amount<=0){ document.getElementById("mSalaryMsg").innerHTML = `<div class="msg err">أدخل مبلغاً صحيحاً</div>`; return; }
+          if(!DB.salaryPayments[st.id]) DB.salaryPayments[st.id] = {};
+          const payId = uid();
+          DB.salaryPayments[st.id][payId] = {id:payId, year, month, amount, date:new Date().toISOString()};
+          saveDB(DB);
+          closeModal();
+          drawAll();
+        };
+      };
+    });
+  }
+
+  function drawExpenses(){
+    const {month, year} = getYM();
+    const monthExpenses = DB.expenses.filter(e=>{
+      const d = new Date(e.date);
+      return d.getFullYear()===year && d.getMonth()+1===month;
+    }).sort((a,b)=>b.date.localeCompare(a.date));
+    document.getElementById("finExpensesWrap").innerHTML = `
+      <div class="card no-print">
+        <h2>📉 المصروفات العامة</h2>
+        <div class="row">
+          <div><label>نوع المصروف</label><input id="expCategory" placeholder="مثال: كهرباء، إيجار، قرطاسية..."></div>
+          <div><label>المبلغ (DJF)</label><input type="number" id="expAmount" placeholder="مثال: 15000"></div>
+          <div><label>التاريخ</label><input type="date" id="expDate" value="${todayStr()}"></div>
+          <div><label>ملاحظة</label><input id="expNote" placeholder="اختياري..."></div>
+          <div style="align-self:flex-end;"><button class="btn-green" id="addExpBtn">+ إضافة</button></div>
+        </div>
+        <div id="expMsg"></div>
+      </div>
+      <div class="card">
+        <h2>مصروفات ${monthNames[month-1]} ${year}</h2>
+        <table>
+          <tr><th>النوع</th><th>المبلغ</th><th>التاريخ</th><th>ملاحظة</th><th>حذف</th></tr>
+          ${monthExpenses.map(e=>`
+            <tr>
+              <td class="name-cell">${e.category}</td>
+              <td style="color:var(--error);font-weight:bold;">${e.amount.toLocaleString()} DJF</td>
+              <td>${e.date}</td>
+              <td style="color:var(--muted);font-size:12px;">${e.note||"—"}</td>
+              <td><button class="btn-danger btn-sm" data-del-exp="${e.id}">حذف</button></td>
+            </tr>`).join("") || `<tr><td colspan="5" style="color:var(--muted)">لا توجد مصروفات مسجّلة لهذا الشهر</td></tr>`}
+        </table>
+      </div>`;
+
+    document.getElementById("addExpBtn").onclick = () => {
+      const category = document.getElementById("expCategory").value.trim();
+      const amount = parseInt(document.getElementById("expAmount").value) || 0;
+      const date = document.getElementById("expDate").value;
+      const note = document.getElementById("expNote").value.trim();
+      const msg = document.getElementById("expMsg");
+      if(!category || amount<=0){ msg.innerHTML = `<div class="msg err">أدخل نوع المصروف والمبلغ</div>`; return; }
+      DB.expenses.push({id:uid(), category, amount, date, note, recordedAt:new Date().toISOString()});
+      saveDB(DB);
+      document.getElementById("expCategory").value = "";
+      document.getElementById("expAmount").value = "";
+      document.getElementById("expNote").value = "";
+      msg.innerHTML = `<div class="msg ok">تمت الإضافة</div>`;
+      drawAll();
+    };
+    document.querySelectorAll("[data-del-exp]").forEach(btn=>{
+      btn.onclick = () => {
+        showConfirm("حذف هذا المصروف؟", () => {
+          DB.expenses = DB.expenses.filter(x=>x.id!==btn.dataset.delExp);
+          saveDB(DB); drawAll();
+        });
+      };
+    });
+  }
+
+  function drawAll(){
+    drawOverview();
+    drawSalaries();
+    drawExpenses();
+  }
+  drawAll();
 }
 
 function renderAdminBackup(c){
