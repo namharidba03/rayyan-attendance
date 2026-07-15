@@ -650,6 +650,24 @@ const I18N = {
     ag_save: "حفظ",
     ag_cancel: "إلغاء",
     ag_confirm_delete: "هل أنت متأكد من حذف هذه المجموعة؟",
+    ag_male_only: "ذكر فقط",
+    ag_female_only: "أنثى فقط",
+    ag_mixed_full: "مختلط (ذكر وأنثى)",
+    ag_teacher_placeholder: "اسم المعلم/ة",
+    ag_pass_placeholder: "كلمة سر",
+    ag_curr_quran_full: "قرآن (سور)",
+    ag_curr_sighar_full: "تمهيدي / صغار (لم يبلغوا القرآن بعد)",
+    ag_err_name_pass: "أدخل اسم المجموعة وكلمة السر",
+    ag_th_pass: "كلمة السر",
+    ag_th_studcount: "عدد الطلاب",
+    ag_th_students: "الطلاب",
+    ag_view_students: "عرض الطلاب",
+    ag_main_admin_only: "(للمدير الرئيسي فقط)",
+    ag_err_pass_empty: "كلمة السر لا يمكن أن تكون فارغة",
+    ag_confirm_type_change: "سيضبط جنس جميع طلاب المجموعة تلقائياً إلى",
+    ag_confirm_continue: "هل تريد المتابعة؟",
+    ag_confirm_type_prefix: "تحويل النوع إلى",
+    ag_confirm_del_group_students: "حذف المجموعة وجميع طلابها؟",
   },
   fr: {
     err_send_failed: "Échec de l'envoi",
@@ -779,6 +797,24 @@ const I18N = {
     ag_save: "Enregistrer",
     ag_cancel: "Annuler",
     ag_confirm_delete: "Êtes-vous sûr(e) de vouloir supprimer ce groupe ?",
+    ag_male_only: "Garçons uniquement",
+    ag_female_only: "Filles uniquement",
+    ag_mixed_full: "Mixte (garçons et filles)",
+    ag_teacher_placeholder: "Nom de l'enseignant(e)",
+    ag_pass_placeholder: "Mot de passe",
+    ag_curr_quran_full: "Coran (sourates)",
+    ag_curr_sighar_full: "Préparatoire / Petits (n'ont pas encore atteint le Coran)",
+    ag_err_name_pass: "Entrez le nom du groupe et le mot de passe",
+    ag_th_pass: "Mot de passe",
+    ag_th_studcount: "Nombre d'élèves",
+    ag_th_students: "Élèves",
+    ag_view_students: "Voir les élèves",
+    ag_main_admin_only: "(administrateur principal uniquement)",
+    ag_err_pass_empty: "Le mot de passe ne peut pas être vide",
+    ag_confirm_type_change: "ajustera automatiquement le genre de tous les élèves du groupe à",
+    ag_confirm_continue: "Voulez-vous continuer ?",
+    ag_confirm_type_prefix: "Changer le type en",
+    ag_confirm_del_group_students: "Supprimer le groupe et tous ses élèves ?",
     login_title: "Connexion",
     login_choose_role: "Choisissez le type de compte",
     role_admin: "🛡️ Administration",
@@ -876,7 +912,10 @@ const STATUS_I18N = {
   "أخرى": {ar:"أخرى", fr:"Autre"},
   "نشط": {ar:"نشط", fr:"Actif"},
   "موقوف": {ar:"موقوف", fr:"Suspendu"},
-  "قيد الانتظار (حالة)": {ar:"قيد الانتظار", fr:"En attente"}
+  "قيد الانتظار (حالة)": {ar:"قيد الانتظار", fr:"En attente"},
+  "ذكر": {ar:"ذكر", fr:"Garçon"},
+  "أنثى": {ar:"أنثى", fr:"Fille"},
+  "مختلط": {ar:"مختلط", fr:"Mixte"}
 };
 function tStatus(val){
   const entry = STATUS_I18N[val];
@@ -1737,25 +1776,25 @@ function renderAdminHome(c){
 function renderAdminGroups(c){
   c.innerHTML = `
     <div class="card">
-      <h2>إضافة مجموعة جديدة</h2>
+      <h2>${t("ag_add_new_group")}</h2>
       <div class="row">
-        <div><label>اسم المجموعة</label><input id="newGroupName" placeholder="مثال: مجموعة البنين 1"></div>
-        <div><label>نوع المجموعة</label>
+        <div><label>${t("ag_group_name")}</label><input id="newGroupName" placeholder="مثال: مجموعة البنين 1"></div>
+        <div><label>${t("ag_group_type")}</label>
           <select id="newGroupType">
-            <option value="ذكر">ذكر فقط</option>
-            <option value="أنثى">أنثى فقط</option>
-            <option value="مختلط">مختلط (ذكر وأنثى)</option>
+            <option value="ذكر">${t("ag_male_only")}</option>
+            <option value="أنثى">${t("ag_female_only")}</option>
+            <option value="مختلط">${t("ag_mixed_full")}</option>
           </select>
         </div>
-        <div><label>اسم المعلم/ة</label><input id="newGroupTeacher" placeholder="اسم المعلم/ة"></div>
-        <div><label>كلمة سر المعلم/ة</label><input id="newGroupPass" placeholder="كلمة سر"></div>
-        <div><label>نوع المنهج</label>
+        <div><label>${t("ag_teacher_name")}</label><input id="newGroupTeacher" placeholder="${t("ag_teacher_placeholder")}"></div>
+        <div><label>${t("ag_teacher_pass")}</label><input id="newGroupPass" placeholder="${t("ag_pass_placeholder")}"></div>
+        <div><label>${t("ag_curriculum")}</label>
           <select id="newGroupCurriculum">
-            <option value="quran">قرآن (سور)</option>
-            <option value="sighar">تمهيدي / صغار (لم يبلغوا القرآن بعد)</option>
+            <option value="quran">${t("ag_curr_quran_full")}</option>
+            <option value="sighar">${t("ag_curr_sighar_full")}</option>
           </select>
         </div>
-        <div style="align-self:flex-end;"><button class="btn-green" id="addGroupBtn">+ إضافة</button></div>
+        <div style="align-self:flex-end;"><button class="btn-green" id="addGroupBtn">${t("ag_add_btn")}</button></div>
       </div>
       <div id="groupMsg"></div>
     </div>
@@ -1766,7 +1805,7 @@ function renderAdminGroups(c){
     const curriculum = document.getElementById("newGroupCurriculum").value;
     const teacherName = document.getElementById("newGroupTeacher").value.trim();
     const pass = document.getElementById("newGroupPass").value.trim();
-    if(!name || !pass){ document.getElementById("groupMsg").innerHTML = `<div class="msg err">أدخل اسم المجموعة وكلمة السر</div>`; return; }
+    if(!name || !pass){ document.getElementById("groupMsg").innerHTML = `<div class="msg err">${t("ag_err_name_pass")}</div>`; return; }
     DB.groups.push({id:uid(), name, groupType, curriculum, teacherName, teacherPass:pass});
     saveDB(DB); renderAdminGroups(c);
   };
@@ -1774,7 +1813,7 @@ function renderAdminGroups(c){
   const list = document.getElementById("groupsList");
   list.innerHTML = `
     <table>
-      <tr><th>المجموعة</th><th>النوع</th><th>المنهج</th><th>المعلم/ة</th><th>كلمة السر</th><th>عدد الطلاب</th><th>الطلاب</th><th>تعديل</th><th>حذف</th></tr>
+      <tr><th>${t("ag_group_name")}</th><th>${t("ag_col_type")}</th><th>${t("ag_col_curriculum")}</th><th>${t("ag_col_teacher")}</th><th>${t("ag_th_pass")}</th><th>${t("ag_th_studcount")}</th><th>${t("ag_th_students")}</th><th>${t("ag_col_edit")}</th><th>${t("ag_col_delete")}</th></tr>
       ${DB.groups.map(g=>{
         const studCount = DB.students.filter(s=>s.groupId===g.id).length;
         const gt = g.groupType || "مختلط";
@@ -1782,16 +1821,16 @@ function renderAdminGroups(c){
         const isSighar = g.curriculum === "sighar";
         return `<tr>
           <td class="name-cell" style="font-weight:bold;color:var(--green-d)">${g.name}</td>
-          <td><span class="badge" style="background:${isMixed?'var(--noquran)':gt==='أنثى'?'#D6336C':'var(--green)'};font-size:11px;">${gt}</span></td>
-          <td>${isSighar?'<span class="badge" style="background:var(--gold);font-size:11px;">تمهيدي/صغار</span>':'<span style="color:var(--muted);font-size:12px;">قرآن</span>'}</td>
+          <td><span class="badge" style="background:${isMixed?'var(--noquran)':gt==='أنثى'?'#D6336C':'var(--green)'};font-size:11px;">${tStatus(gt)}</span></td>
+          <td>${isSighar?`<span class="badge" style="background:var(--gold);font-size:11px;">${t("ag_curr_sighar")}</span>`:`<span style="color:var(--muted);font-size:12px;">${t("ag_curr_quran")}</span>`}</td>
           <td>${g.teacherName||"—"}</td>
           <td>${g.teacherPass}</td>
           <td style="font-weight:bold;">${studCount}</td>
-          <td><button class="btn-outline btn-sm" data-view-students="${g.id}">عرض الطلاب</button></td>
-          <td><button class="btn-outline btn-sm" data-edit-group="${g.id}">تعديل</button></td>
-          <td><button class="btn-danger btn-sm" data-del-group="${g.id}">حذف</button></td>
+          <td><button class="btn-outline btn-sm" data-view-students="${g.id}">${t("ag_view_students")}</button></td>
+          <td><button class="btn-outline btn-sm" data-edit-group="${g.id}">${t("ag_col_edit")}</button></td>
+          <td><button class="btn-danger btn-sm" data-del-group="${g.id}">${t("ag_col_delete")}</button></td>
         </tr>`;
-      }).join("") || `<tr><td colspan="9" style="color:var(--muted)">لا توجد مجموعات بعد</td></tr>`}
+      }).join("") || `<tr><td colspan="9" style="color:var(--muted)">${t("ag_no_groups")}</td></tr>`}
     </table>`;
 
   list.querySelectorAll("[data-view-students]").forEach(btn=>{
@@ -1805,28 +1844,28 @@ function renderAdminGroups(c){
     btn.onclick = () => {
       const g = DB.groups.find(x=>x.id===btn.dataset.editGroup);
       openModal(`
-        <h3>تعديل بيانات المجموعة</h3>
-        <label>اسم المجموعة</label>
+        <h3>${t("ag_edit_group")}</h3>
+        <label>${t("ag_group_name")}</label>
         <input id="mGName" value="${g.name.replace(/"/g,'&quot;')}">
-        <label>نوع المجموعة</label>
+        <label>${t("ag_group_type")}</label>
         <select id="mGType">
-          <option value="ذكر" ${g.groupType==="ذكر"?"selected":""}>ذكر فقط</option>
-          <option value="أنثى" ${g.groupType==="أنثى"?"selected":""}>أنثى فقط</option>
-          <option value="مختلط" ${(!g.groupType||g.groupType==="مختلط")?"selected":""}>مختلط (ذكر وأنثى)</option>
+          <option value="ذكر" ${g.groupType==="ذكر"?"selected":""}>${t("ag_male_only")}</option>
+          <option value="أنثى" ${g.groupType==="أنثى"?"selected":""}>${t("ag_female_only")}</option>
+          <option value="مختلط" ${(!g.groupType||g.groupType==="مختلط")?"selected":""}>${t("ag_mixed_full")}</option>
         </select>
-        <label>اسم المعلم/ة</label>
+        <label>${t("ag_teacher_name")}</label>
         <input id="mGTeacher" value="${(g.teacherName||"").replace(/"/g,'&quot;')}">
-        <label>نوع المنهج</label>
+        <label>${t("ag_curriculum")}</label>
         <select id="mGCurriculum">
-          <option value="quran" ${(!g.curriculum||g.curriculum==="quran")?"selected":""}>قرآن (سور)</option>
-          <option value="sighar" ${g.curriculum==="sighar"?"selected":""}>تمهيدي / صغار (لم يبلغوا القرآن بعد)</option>
+          <option value="quran" ${(!g.curriculum||g.curriculum==="quran")?"selected":""}>${t("ag_curr_quran_full")}</option>
+          <option value="sighar" ${g.curriculum==="sighar"?"selected":""}>${t("ag_curr_sighar_full")}</option>
         </select>
-        <label>كلمة سر المعلم/ة ${isMainAdmin()?"":'<span style="color:var(--muted);font-weight:normal;">(للمدير الرئيسي فقط)</span>'}</label>
+        <label>${t("ag_teacher_pass")} ${isMainAdmin()?"":`<span style="color:var(--muted);font-weight:normal;">${t("ag_main_admin_only")}</span>`}</label>
         <input id="mGPass" value="${(g.teacherPass||"").replace(/"/g,'&quot;')}" ${isMainAdmin()?"":"disabled"}>
         <div id="mGMsg"></div>
         <div class="row" style="justify-content:flex-end;margin-top:16px;">
-          <button class="btn-outline btn-sm" id="mGCancel">إلغاء</button>
-          <button class="btn-green btn-sm" id="mGSave">حفظ</button>
+          <button class="btn-outline btn-sm" id="mGCancel">${t("ag_cancel")}</button>
+          <button class="btn-green btn-sm" id="mGSave">${t("ag_save")}</button>
         </div>`);
       document.getElementById("mGCancel").onclick = closeModal;
       document.getElementById("mGSave").onclick = () => {
@@ -1835,7 +1874,7 @@ function renderAdminGroups(c){
         const newCurriculum = document.getElementById("mGCurriculum").value;
         const newTeacher = document.getElementById("mGTeacher").value.trim();
         const newPass = isMainAdmin() ? document.getElementById("mGPass").value.trim() : g.teacherPass;
-        if(!newPass){ document.getElementById("mGMsg").innerHTML = `<div class="msg err">كلمة السر لا يمكن أن تكون فارغة</div>`; return; }
+        if(!newPass){ document.getElementById("mGMsg").innerHTML = `<div class="msg err">${t("ag_err_pass_empty")}</div>`; return; }
 
         const applyChanges = () => {
           g.name = newName || g.name;
@@ -1852,7 +1891,7 @@ function renderAdminGroups(c){
           const fixedGender = validType === "أنثى" ? "أنثى" : "ذكر";
           const affected = DB.students.filter(s=>s.groupId===g.id).length;
           if(affected){
-            showConfirm(`تحويل النوع إلى "${validType}" سيضبط جنس جميع طلاب المجموعة (${affected}) تلقائياً إلى "${fixedGender}". هل تريد المتابعة؟`, () => {
+            showConfirm(`${t("ag_confirm_type_prefix")} "${tStatus(validType)}" ${t("ag_confirm_type_change")} "${tStatus(fixedGender)}" (${affected}). ${t("ag_confirm_continue")}`, () => {
               DB.students.filter(s=>s.groupId===g.id).forEach(s=>{ s.gender = fixedGender; });
               applyChanges();
             });
@@ -1865,7 +1904,7 @@ function renderAdminGroups(c){
   });
   list.querySelectorAll("[data-del-group]").forEach(btn=>{
     btn.onclick = () => {
-      showConfirm("حذف المجموعة وجميع طلابها؟", () => {
+      showConfirm(t("ag_confirm_del_group_students"), () => {
         const gid = btn.dataset.delGroup;
         DB.groups = DB.groups.filter(g=>g.id!==gid);
         DB.students = DB.students.filter(s=>s.groupId!==gid);
