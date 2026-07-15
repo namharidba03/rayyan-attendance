@@ -1174,6 +1174,13 @@ const headerRight = document.getElementById("headerRight");
 
 function render(){
   headerRight.innerHTML = "";
+  {
+    const langBtn = document.createElement("button");
+    langBtn.className = "logout";
+    langBtn.textContent = LANG === "ar" ? "🇫🇷 FR" : "🇸🇦 AR";
+    langBtn.onclick = () => setLang(LANG === "ar" ? "fr" : "ar");
+    headerRight.append(langBtn);
+  }
   if(!SESSION){ renderLogin(); return; }
 
   const badge = document.createElement("span");
@@ -1203,13 +1210,6 @@ function render(){
     render();
   };
   headerRight.append(badge, logoutBtn);
-  {
-    const langBtn = document.createElement("button");
-    langBtn.className = "logout";
-    langBtn.textContent = LANG === "ar" ? "🇫🇷 FR" : "🇸🇦 AR";
-    langBtn.onclick = () => setLang(LANG === "ar" ? "fr" : "ar");
-    headerRight.insertBefore(langBtn, badge);
-  }
   if(SESSION.role !== "parent" && SESSION.role !== "proctor"){
     const refreshBtn = document.createElement("button");
     refreshBtn.className = "logout"; refreshBtn.textContent = "🔄 تحديث";
@@ -1228,10 +1228,6 @@ function renderLogin(){
   app.innerHTML = `
   <div class="center">
     <div class="card login-card">
-      <div style="text-align:left;margin-bottom:6px;">
-        <button class="btn-outline btn-sm" id="langAr" style="${LANG==='ar'?'font-weight:bold;background:var(--green-d);color:#fff;':''}">🇸🇦 عربي</button>
-        <button class="btn-outline btn-sm" id="langFr" style="${LANG==='fr'?'font-weight:bold;background:var(--green-d);color:#fff;':''}">🇫🇷 Français</button>
-      </div>
       <img src="${LOGO_B64}" alt="شعار المركز" style="width:100px;height:auto;display:block;margin:0 auto 14px;border-radius:8px;">
       <h2>${t("login_title")}</h2>
       <p style="color:var(--muted);font-size:13px;">${t("login_choose_role")}</p>
@@ -1245,8 +1241,6 @@ function renderLogin(){
       <p style="color:var(--muted);font-size:10px;margin-top:14px;">${t("version_label")}: ${APP_VERSION}</p>
     </div>
   </div>`;
-  document.getElementById("langAr").onclick = () => setLang("ar");
-  document.getElementById("langFr").onclick = () => setLang("fr");
   document.getElementById("btnAdmin").onclick = () => showAdminLogin();
   document.getElementById("btnParent").onclick = () => showParentLogin();
   document.getElementById("btnTeacher").onclick = () => loadTeacherLoginData();
