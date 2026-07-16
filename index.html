@@ -668,6 +668,69 @@ const I18N = {
     ag_confirm_continue: "هل تريد المتابعة؟",
     ag_confirm_type_prefix: "تحويل النوع إلى",
     ag_confirm_del_group_students: "حذف المجموعة وجميع طلابها؟",
+    as_add_new_student: "إضافة طالب/ة جديد/ة",
+    as_choose_group: "اختر المجموعة...",
+    as_name_label: "الاسم",
+    as_name_placeholder: "اسم الطالب/ة",
+    as_gender_label: "الجنس",
+    as_gender_star: "الجنس... *",
+    as_male_student: "ذكر (طالب)",
+    as_female_student: "أنثى (طالبة)",
+    as_parent_phone: "هاتف ولي الأمر",
+    as_self_responsible: "مسؤول/ة عن نفسه/ا",
+    as_add_btn: "+ إضافة",
+    as_group_label: "المجموعة",
+    as_filter_search: "🔎 تصفية وبحث",
+    as_all_groups: "كل المجموعات",
+    as_status_label: "الحالة",
+    as_all: "الكل",
+    as_search_by_name: "بحث بالاسم أو الرقم",
+    as_err_choose_group: "اختر المجموعة أولاً",
+    as_err_enter_name: "أدخل اسم الطالب/ة",
+    as_err_mixed_gender: "هذه مجموعة مختلطة — يجب تحديد الجنس",
+    as_saving: "جارٍ الحفظ...",
+    as_added_saved: "✅ تمت الإضافة وحُفظت في السحابة",
+    as_save_failed: "❌ تعذّر الحفظ:",
+    as_unknown_error: "خطأ غير معروف",
+    as_retry_hint: "جرّب: تسجيل الخروج ثم الدخول من جديد، أو تحقق من Firebase Rules.",
+    as_students_count: "الطلاب",
+    as_th_status: "الحالة",
+    as_th_stage: "المرحلة/السورة",
+    as_th_number: "الرقم",
+    as_th_name: "الاسم",
+    as_th_group: "المجموعة",
+    as_th_phone: "الهاتف",
+    as_th_transfer: "نقل",
+    as_th_edit: "تعديل",
+    as_th_delete: "حذف",
+    as_change: "تغيير",
+    as_no_match: "لا يوجد طلاب/طالبات مطابقين",
+    as_portal_title: "بوابة ولي الأمر:",
+    as_phone_not_set: "— لم يُسجَّل —",
+    as_status_label2: "الحالة:",
+    as_account_active: "✅ الحساب مُفعَّل",
+    as_account_inactive: "⛔ لم يُفعَّل بعد",
+    as_activate_btn: "🔑 تفعيل حساب البوابة",
+    as_regen_pin_btn: "🔄 إعادة تعيين PIN",
+    as_send_whatsapp: "📲 إرسال بيانات الدخول واتساب",
+    as_add_phone_first: "أضف رقم هاتف للطالب أولاً (زر \"تعديل\")",
+    as_close: "إغلاق",
+    as_edit_student_title: "تعديل بيانات الطالب/ة",
+    as_whatsapp_label: "رقم واتساب ولي الأمر",
+    as_self_responsible_adult: "مسؤول/ة عن نفسه/ا (بالغ)",
+    as_confirm_delete_student: "حذف هذا الطالب/ة؟",
+    as_transfer_title: "نقل",
+    as_from_label: "من:",
+    as_transfer_to_group: "نقل إلى المجموعة",
+    as_no_other_groups: "لا توجد مجموعات أخرى",
+    as_transfer_btn: "نقل",
+    as_err_choose_group2: "اختر مجموعة",
+    as_err_male_only: "هذه مجموعة ذكر فقط — لا يمكن نقل طالبة إليها",
+    as_err_female_only: "هذه مجموعة أنثى فقط — لا يمكن نقل طالب إليها",
+    as_confirm_transfer: "سيتم إشعار معلمي المجموعتين.",
+    as_change_status_title: "تغيير حالة",
+    as_reason_optional: "سبب (اختياري — سيُرسل للمعلم/ة)",
+    as_reason_placeholder: "مثال: عدم دفع الرسوم، مشكلة إدارية...",
   },
   fr: {
     err_send_failed: "Échec de l'envoi",
@@ -815,6 +878,115 @@ const I18N = {
     ag_confirm_continue: "Voulez-vous continuer ?",
     ag_confirm_type_prefix: "Changer le type en",
     ag_confirm_del_group_students: "Supprimer le groupe et tous ses élèves ?",
+    as_add_new_student: "Ajouter un(e) nouvel(le) élève",
+    as_choose_group: "Choisir le groupe...",
+    as_name_label: "Nom",
+    as_name_placeholder: "Nom de l'élève",
+    as_gender_label: "Genre",
+    as_gender_star: "Genre... *",
+    as_male_student: "Garçon (élève)",
+    as_female_student: "Fille (élève)",
+    as_parent_phone: "Téléphone du parent",
+    as_self_responsible: "Responsable de lui/elle-même",
+    as_add_btn: "+ Ajouter",
+    as_filter_search: "🔎 Filtrer et rechercher",
+    as_all_groups: "Tous les groupes",
+    as_status_label: "Statut",
+    as_all: "Tous",
+    as_search_by_name: "Rechercher par nom ou numéro",
+    as_err_choose_group: "Choisissez d'abord le groupe",
+    as_err_enter_name: "Entrez le nom de l'élève",
+    as_err_mixed_gender: "Ce groupe est mixte — le genre doit être précisé",
+    as_saving: "Enregistrement...",
+    as_added_saved: "✅ Ajouté(e) et enregistré(e) dans le cloud",
+    as_save_failed: "❌ Échec de l'enregistrement :",
+    as_unknown_error: "Erreur inconnue",
+    as_retry_hint: "Essayez : déconnexion puis reconnexion, ou vérifiez les règles Firebase.",
+    as_students_count: "Élèves",
+    as_th_status: "Statut",
+    as_th_stage: "Étape/Sourate",
+    as_th_number: "N°",
+    as_th_name: "Nom",
+    as_th_group: "Groupe",
+    as_th_phone: "Téléphone",
+    as_th_transfer: "Transfert",
+    as_th_edit: "Modifier",
+    as_th_delete: "Supprimer",
+    as_change: "Modifier",
+    as_no_match: "Aucun(e) élève correspondant(e)",
+    as_portal_title: "Portail parent :",
+    as_phone_not_set: "— non enregistré —",
+    as_status_label2: "Statut :",
+    as_account_active: "✅ Compte activé",
+    as_account_inactive: "⛔ Pas encore activé",
+    as_activate_btn: "🔑 Activer le compte du portail",
+    as_regen_pin_btn: "🔄 Réinitialiser le PIN",
+    as_send_whatsapp: "📲 Envoyer les identifiants via WhatsApp",
+    as_add_phone_first: "Ajoutez d'abord un numéro de téléphone (bouton \"Modifier\")",
+    as_close: "Fermer",
+    as_add_new_student: "Ajouter un(e) nouvel(le) élève",
+    as_choose_group: "Choisir le groupe...",
+    as_name_label: "Nom",
+    as_name_placeholder: "Nom de l'élève",
+    as_gender_label: "Genre",
+    as_gender_star: "Genre... *",
+    as_male_student: "Garçon (élève)",
+    as_female_student: "Fille (élève)",
+    as_parent_phone: "Téléphone du parent",
+    as_self_responsible: "Responsable de lui/elle-même",
+    as_add_btn: "+ Ajouter",
+    as_group_label: "Groupe",
+    as_filter_search: "🔎 Filtrer et rechercher",
+    as_all_groups: "Tous les groupes",
+    as_status_label: "Statut",
+    as_all: "Tous",
+    as_search_by_name: "Rechercher par nom ou numéro",
+    as_err_choose_group: "Choisissez d'abord le groupe",
+    as_err_enter_name: "Entrez le nom de l'élève",
+    as_err_mixed_gender: "Ce groupe est mixte — le genre doit être précisé",
+    as_saving: "Enregistrement...",
+    as_added_saved: "✅ Ajouté et enregistré dans le cloud",
+    as_save_failed: "❌ Échec de l'enregistrement :",
+    as_unknown_error: "Erreur inconnue",
+    as_retry_hint: "Essayez : déconnexion puis reconnexion, ou vérifiez les règles Firebase.",
+    as_students_count: "Élèves",
+    as_th_status: "Statut",
+    as_th_stage: "Étape/Sourate",
+    as_th_number: "N°",
+    as_th_name: "Nom",
+    as_th_group: "Groupe",
+    as_th_phone: "Téléphone",
+    as_th_transfer: "Transfert",
+    as_th_edit: "Modifier",
+    as_th_delete: "Supprimer",
+    as_change: "Changer",
+    as_no_match: "Aucun(e) élève correspondant(e)",
+    as_portal_title: "Portail parent :",
+    as_phone_not_set: "— Non enregistré —",
+    as_status_label2: "Statut :",
+    as_account_active: "✅ Compte activé",
+    as_account_inactive: "⛔ Pas encore activé",
+    as_activate_btn: "🔑 Activer le compte du portail",
+    as_regen_pin_btn: "🔄 Réinitialiser le PIN",
+    as_send_whatsapp: "📲 Envoyer les identifiants via WhatsApp",
+    as_add_phone_first: "Ajoutez d'abord un numéro de téléphone (bouton \"Modifier\")",
+    as_close: "Fermer",
+    as_edit_student_title: "Modifier les informations de l'élève",
+    as_whatsapp_label: "Numéro WhatsApp du parent",
+    as_self_responsible_adult: "Responsable de lui/elle-même (adulte)",
+    as_confirm_delete_student: "Supprimer cet(te) élève ?",
+    as_transfer_title: "Transférer",
+    as_from_label: "De :",
+    as_transfer_to_group: "Transférer vers le groupe",
+    as_no_other_groups: "Aucun autre groupe",
+    as_transfer_btn: "Transférer",
+    as_err_choose_group2: "Choisissez un groupe",
+    as_err_male_only: "Ce groupe est réservé aux garçons — impossible d'y transférer une fille",
+    as_err_female_only: "Ce groupe est réservé aux filles — impossible d'y transférer un garçon",
+    as_confirm_transfer: "Les enseignant(e)s des deux groupes seront notifié(e)s.",
+    as_change_status_title: "Changer le statut de",
+    as_reason_optional: "Motif (facultatif — sera envoyé à l'enseignant(e))",
+    as_reason_placeholder: "Exemple : frais impayés, problème administratif...",
     login_title: "Connexion",
     login_choose_role: "Choisissez le type de compte",
     role_admin: "🛡️ Administration",
@@ -1922,48 +2094,48 @@ function renderAdminStudents(c){
   const groupOpts = DB.groups.map(g=>`<option value="${g.id}" ${studentsFilterGroup===g.id?"selected":""}>${g.name}</option>`).join("");
   c.innerHTML = `
     <div class="card">
-      <h2>إضافة طالب/ة جديد/ة</h2>
+      <h2>${t("as_add_new_student")}</h2>
       <div class="row">
-        <div><label>المجموعة</label>
+        <div><label>${t("as_group_label")}</label>
           <select id="newStudGroup">
-            <option value="">اختر المجموعة...</option>
-            ${DB.groups.map(g=>`<option value="${g.id}">${g.name} (${g.groupType||"مختلط"})</option>`).join("")}
+            <option value="">${t("as_choose_group")}</option>
+            ${DB.groups.map(g=>`<option value="${g.id}">${g.name} (${tStatus(g.groupType||"مختلط")})</option>`).join("")}
           </select>
         </div>
-        <div><label>الاسم</label><input id="newStudName" placeholder="اسم الطالب/ة"></div>
-        <div id="newStudGenderWrap" style="display:none;"><label>الجنس</label>
+        <div><label>${t("as_name_label")}</label><input id="newStudName" placeholder="${t("as_name_placeholder")}"></div>
+        <div id="newStudGenderWrap" style="display:none;"><label>${t("as_gender_label")}</label>
           <select id="newStudGender">
-            <option value="">الجنس... *</option>
-            <option value="ذكر">ذكر (طالب)</option>
-            <option value="أنثى">أنثى (طالبة)</option>
+            <option value="">${t("as_gender_star")}</option>
+            <option value="ذكر">${t("as_male_student")}</option>
+            <option value="أنثى">${t("as_female_student")}</option>
           </select>
         </div>
-        <div><label>هاتف ولي الأمر</label><input id="newStudPhone" placeholder="253xxxxxxxx"></div>
+        <div><label>${t("as_parent_phone")}</label><input id="newStudPhone" placeholder="253xxxxxxxx"></div>
         <label style="font-weight:normal;font-size:12px;display:flex;align-items:center;gap:4px;align-self:flex-end;">
-          <input type="checkbox" id="newStudSelf"> مسؤول/ة عن نفسه/ا
+          <input type="checkbox" id="newStudSelf"> ${t("as_self_responsible")}
         </label>
-        <div style="align-self:flex-end;"><button class="btn-green" id="addStudBtn">+ إضافة</button></div>
+        <div style="align-self:flex-end;"><button class="btn-green" id="addStudBtn">${t("as_add_btn")}</button></div>
       </div>
       <div id="addStudMsg"></div>
     </div>
     <div class="card">
-      <h2>🔎 تصفية وبحث</h2>
+      <h2>${t("as_filter_search")}</h2>
       <div class="row">
-        <div><label>المجموعة</label>
+        <div><label>${t("as_group_label")}</label>
           <select id="filterGroup">
-            <option value="">كل المجموعات</option>
+            <option value="">${t("as_all_groups")}</option>
             ${groupOpts}
           </select>
         </div>
-        <div><label>الحالة</label>
+        <div><label>${t("as_status_label")}</label>
           <select id="filterStatus">
-            <option value="">الكل</option>
-            <option value="نشط" ${studentsFilterStatus==="نشط"?"selected":""}>نشط</option>
-            <option value="موقوف" ${studentsFilterStatus==="موقوف"?"selected":""}>موقوف</option>
-            <option value="قيد الانتظار" ${studentsFilterStatus==="قيد الانتظار"?"selected":""}>قيد الانتظار</option>
+            <option value="">${t("as_all")}</option>
+            <option value="نشط" ${studentsFilterStatus==="نشط"?"selected":""}>${tStatus("نشط")}</option>
+            <option value="موقوف" ${studentsFilterStatus==="موقوف"?"selected":""}>${tStatus("موقوف")}</option>
+            <option value="قيد الانتظار" ${studentsFilterStatus==="قيد الانتظار"?"selected":""}>${tStatus("قيد الانتظار")}</option>
           </select>
         </div>
-        <div style="flex:1;min-width:180px;"><label>بحث بالاسم أو الرقم</label><input id="filterSearch" value="${studentsFilterSearch}" placeholder="مثال: R-0007 أو الاسم"></div>
+        <div style="flex:1;min-width:180px;"><label>${t("as_search_by_name")}</label><input id="filterSearch" value="${studentsFilterSearch}" placeholder="مثال: R-0007"></div>
       </div>
     </div>
     <div id="studentsTableWrap"></div>`;
@@ -1978,28 +2150,28 @@ function renderAdminStudents(c){
   document.getElementById("addStudBtn").onclick = async () => {
     const gid = groupSelect.value;
     const msg = document.getElementById("addStudMsg");
-    if(!gid){ msg.innerHTML = `<div class="msg err">اختر المجموعة أولاً</div>`; return; }
+    if(!gid){ msg.innerHTML = `<div class="msg err">${t("as_err_choose_group")}</div>`; return; }
     const g = DB.groups.find(x=>x.id===gid);
     const name = document.getElementById("newStudName").value.trim();
-    if(!name){ msg.innerHTML = `<div class="msg err">أدخل اسم الطالب/ة</div>`; return; }
+    if(!name){ msg.innerHTML = `<div class="msg err">${t("as_err_enter_name")}</div>`; return; }
     const isMixed = (g.groupType||"مختلط")==="مختلط";
     let gender = isMixed ? document.getElementById("newStudGender").value : (g.groupType==="أنثى"?"أنثى":"ذكر");
-    if(isMixed && !gender){ msg.innerHTML = `<div class="msg err">هذه مجموعة مختلطة — يجب تحديد الجنس</div>`; return; }
+    if(isMixed && !gender){ msg.innerHTML = `<div class="msg err">${t("as_err_mixed_gender")}</div>`; return; }
     const phone = document.getElementById("newStudPhone").value.trim();
     const selfResponsible = document.getElementById("newStudSelf").checked;
     const code = nextStudentCode();
     const portalPin = String(Math.floor(1000+Math.random()*9000));
     DB.students.push({id:uid(), code, groupId:gid, name, gender, phone, selfResponsible, portalPin, groupName:g.name, curriculum:g.curriculum||"quran", status:"نشط", feeCategory:"كامل", feeCustomAmount:0});
-    msg.innerHTML = `<div class="msg ok">جارٍ الحفظ...</div>`;
+    msg.innerHTML = `<div class="msg ok">${t("as_saving")}</div>`;
     try{
       await saveDB(DB);
       document.getElementById("newStudName").value = "";
       document.getElementById("newStudPhone").value = "";
       document.getElementById("newStudSelf").checked = false;
-      msg.innerHTML = `<div class="msg ok">✅ تمت الإضافة وحُفظت في السحابة</div>`;
+      msg.innerHTML = `<div class="msg ok">${t("as_added_saved")}</div>`;
       drawStudentsTable();
     }catch(err){
-      msg.innerHTML = `<div class="msg err">❌ تعذّر الحفظ: <strong>${err && err.code ? err.code : ""}</strong> — ${err && err.message ? err.message : "خطأ غير معروف"}<br><span style="font-size:11px;">جرّب: تسجيل الخروج ثم الدخول من جديد، أو تحقق من Firebase Rules.</span></div>`;
+      msg.innerHTML = `<div class="msg err">${t("as_save_failed")} <strong>${err && err.code ? err.code : ""}</strong> — ${err && err.message ? err.message : t("as_unknown_error")}<br><span style="font-size:11px;">${t("as_retry_hint")}</span></div>`;
       // Roll back the local in-memory addition since the save failed
       DB.students = DB.students.filter(s=>s.code!==code);
     }
@@ -2021,26 +2193,26 @@ function renderAdminStudents(c){
     const wrap = document.getElementById("studentsTableWrap");
     wrap.innerHTML = `
       <div class="card">
-        <h2>الطلاب (${filtered.length})</h2>
+        <h2>${t("as_students_count")} (${filtered.length})</h2>
         <table>
-          <tr><th>الحالة</th><th>المرحلة/السورة</th><th>الرقم</th><th>الاسم</th><th>المجموعة</th><th>الهاتف</th><th>PIN Portal</th><th>نقل</th><th>تعديل</th><th>حذف</th></tr>
+          <tr><th>${t("as_th_status")}</th><th>${t("as_th_stage")}</th><th>${t("as_th_number")}</th><th>${t("as_th_name")}</th><th>${t("as_th_group")}</th><th>${t("as_th_phone")}</th><th>PIN Portal</th><th>${t("as_th_transfer")}</th><th>${t("as_th_edit")}</th><th>${t("as_th_delete")}</th></tr>
           ${filtered.map(s=>{
             const g = DB.groups.find(x=>x.id===s.groupId);
             const status = s.status || "نشط";
             const statusColor = status==="نشط" ? "var(--present)" : status==="موقوف" ? "var(--error)" : "var(--late)";
             return `<tr>
-              <td><span style="color:${statusColor};font-weight:bold;font-size:12px;">${status}</span><br><button class="btn-outline btn-sm" data-status-stud="${s.id}" style="margin-top:4px;">تغيير</button></td>
+              <td><span style="color:${statusColor};font-weight:bold;font-size:12px;">${tStatus(status)}</span><br><button class="btn-outline btn-sm" data-status-stud="${s.id}" style="margin-top:4px;">${t("as_change")}</button></td>
               <td style="color:var(--green-d);font-weight:bold;">${s.currentSurah||'<span style="color:var(--muted);font-weight:normal;font-size:11px;">—</span>'}</td>
               <td style="font-weight:bold;color:var(--green-d)">${s.code}</td>
-              <td class="name-cell">${s.name} <span style="font-size:11px;color:var(--muted)">(${studentWord(s)})</span>${s.selfResponsible?' <span style="font-size:11px;color:var(--muted)">· مسؤول/ة عن نفسه/ا</span>':''}</td>
+              <td class="name-cell">${s.name} <span style="font-size:11px;color:var(--muted)">(${studentWord(s)})</span>${s.selfResponsible?` <span style="font-size:11px;color:var(--muted)">· ${t("as_self_responsible")}</span>`:''}</td>
               <td>${g?g.name:"—"}</td>
               <td>${s.phone||"—"}</td>
-              <td><button class="btn-outline btn-sm" data-pin-stud="${s.id}">${s.parentUid?'✅ مفعّل':'⛔ غير مفعّل'}</button></td>
-              <td><button class="btn-gold btn-sm" data-transfer-stud="${s.id}">نقل</button></td>
-              <td><button class="btn-outline btn-sm" data-edit-stud="${s.id}">تعديل</button></td>
-              <td><button class="btn-danger btn-sm" data-del-stud="${s.id}">حذف</button></td>
+              <td><button class="btn-outline btn-sm" data-pin-stud="${s.id}">${s.parentUid?'✅':'⛔'}</button></td>
+              <td><button class="btn-gold btn-sm" data-transfer-stud="${s.id}">${t("as_th_transfer")}</button></td>
+              <td><button class="btn-outline btn-sm" data-edit-stud="${s.id}">${t("as_th_edit")}</button></td>
+              <td><button class="btn-danger btn-sm" data-del-stud="${s.id}">${t("as_th_delete")}</button></td>
             </tr>`;
-          }).join("") || `<tr><td colspan="10" style="color:var(--muted)">لا يوجد طلاب/طالبات مطابقين</td></tr>`}
+          }).join("") || `<tr><td colspan="10" style="color:var(--muted)">${t("as_no_match")}</td></tr>`}
         </table>
       </div>`;
 
@@ -2054,21 +2226,21 @@ function renderAdminStudents(c){
 
         function draw(){
           openModal(`
-            <h3>بوابة ولي الأمر: ${s.name}</h3>
-            <p style="color:var(--muted);font-size:13px;">رقم الهاتف: <strong>${s.phone||"— لم يُسجَّل —"}</strong></p>
-            <p style="font-size:13px;">الحالة: ${activated ? '<span style="color:var(--present);font-weight:bold;">✅ الحساب مُفعَّل</span>' : '<span style="color:var(--error);font-weight:bold;">⛔ لم يُفعَّل بعد</span>'}</p>
+            <h3>${t("as_portal_title")} ${s.name}</h3>
+            <p style="color:var(--muted);font-size:13px;">${t("as_th_phone")}: <strong>${s.phone||t("as_phone_not_set")}</strong></p>
+            <p style="font-size:13px;">${t("as_status_label2")} ${activated ? `<span style="color:var(--present);font-weight:bold;">${t("as_account_active")}</span>` : `<span style="color:var(--error);font-weight:bold;">${t("as_account_inactive")}</span>`}</p>
             <p style="font-size:22px;font-weight:bold;color:var(--green-d);text-align:center;background:#F2F7F3;border-radius:8px;padding:10px;margin:10px 0;">PIN: ${s.portalPin}</p>
             <div class="row" style="justify-content:center;">
               ${!activated
-                ? `<button class="btn-green btn-sm" id="pinActivateBtn" ${hasPhone?"":"disabled"}>🔑 تفعيل حساب البوابة</button>`
-                : `<button class="btn-outline btn-sm" id="pinRegenBtn">🔄 إعادة تعيين PIN</button>`}
-              ${activated && waLink() ? `<a class="btn-green btn-sm" style="text-decoration:none;" target="_blank" href="${waLink()}">📲 إرسال بيانات الدخول واتساب</a>` : ""}
+                ? `<button class="btn-green btn-sm" id="pinActivateBtn" ${hasPhone?"":"disabled"}>${t("as_activate_btn")}</button>`
+                : `<button class="btn-outline btn-sm" id="pinRegenBtn">${t("as_regen_pin_btn")}</button>`}
+              ${activated && waLink() ? `<a class="btn-green btn-sm" style="text-decoration:none;" target="_blank" href="${waLink()}">${t("as_send_whatsapp")}</a>` : ""}
             </div>
-            ${!hasPhone ? `<p style="color:var(--error);font-size:12px;text-align:center;">أضف رقم هاتف للطالب أولاً (زر "تعديل")</p>` : ""}
+            ${!hasPhone ? `<p style="color:var(--error);font-size:12px;text-align:center;">${t("as_add_phone_first")}</p>` : ""}
             ${activated ? `<div style="text-align:center;margin-top:6px;"><a href="#" id="pinDiagLink" style="font-size:11px;color:var(--muted);text-decoration:underline;">🔍 عرض بيانات التشخيص</a></div><div id="pinDiag" style="font-size:11px;color:var(--muted);background:#F7F7F7;padding:8px;border-radius:6px;margin-top:6px;display:none;word-break:break-all;"></div>` : ""}
             <div id="pinMsg"></div>
             <div class="row" style="justify-content:flex-end;margin-top:16px;">
-              <button class="btn-outline btn-sm" id="pinClose">إغلاق</button>
+              <button class="btn-outline btn-sm" id="pinClose">${t("as_close")}</button>
             </div>`);
           document.getElementById("pinClose").onclick = closeModal;
 
@@ -2175,23 +2347,23 @@ function renderAdminStudents(c){
         const g = DB.groups.find(x=>x.id===s.groupId);
         const isMixedGroup = (g.groupType||"مختلط") === "مختلط";
         openModal(`
-          <h3>تعديل بيانات الطالب/ة</h3>
-          <label>الاسم</label>
+          <h3>${t("as_edit_student_title")}</h3>
+          <label>${t("as_name_label")}</label>
           <input id="mName" value="${s.name.replace(/"/g,'&quot;')}">
-          <label>رقم واتساب ولي الأمر</label>
+          <label>${t("as_whatsapp_label")}</label>
           <input id="mPhone" value="${(s.phone||"").replace(/"/g,'&quot;')}" placeholder="253xxxxxxxx">
           ${isMixedGroup ? `
-          <label>الجنس</label>
+          <label>${t("as_gender_label")}</label>
           <select id="mGender">
-            <option value="ذكر" ${s.gender!=="أنثى"?"selected":""}>ذكر (طالب)</option>
-            <option value="أنثى" ${s.gender==="أنثى"?"selected":""}>أنثى (طالبة)</option>
+            <option value="ذكر" ${s.gender!=="أنثى"?"selected":""}>${t("as_male_student")}</option>
+            <option value="أنثى" ${s.gender==="أنثى"?"selected":""}>${t("as_female_student")}</option>
           </select>` : ""}
           <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-top:12px;">
-            <input type="checkbox" id="mSelf" style="width:auto;" ${s.selfResponsible?"checked":""}> مسؤول/ة عن نفسه/ا (بالغ)
+            <input type="checkbox" id="mSelf" style="width:auto;" ${s.selfResponsible?"checked":""}> ${t("as_self_responsible_adult")}
           </label>
           <div class="row" style="justify-content:flex-end;margin-top:16px;">
-            <button class="btn-outline btn-sm" id="mCancel">إلغاء</button>
-            <button class="btn-green btn-sm" id="mSave">حفظ</button>
+            <button class="btn-outline btn-sm" id="mCancel">${t("ag_cancel")}</button>
+            <button class="btn-green btn-sm" id="mSave">${t("ag_save")}</button>
           </div>`);
         document.getElementById("mCancel").onclick = closeModal;
         document.getElementById("mSave").onclick = () => {
@@ -2206,7 +2378,7 @@ function renderAdminStudents(c){
     });
     wrap.querySelectorAll("[data-del-stud]").forEach(btn=>{
       btn.onclick = () => {
-        showConfirm("حذف هذا الطالب/ة؟", () => {
+        showConfirm(t("as_confirm_delete_student"), () => {
           DB.students = DB.students.filter(s=>s.id!==btn.dataset.delStud);
           saveDB(DB); drawStudentsTable();
         });
@@ -2218,25 +2390,25 @@ function renderAdminStudents(c){
         const currentGroup = DB.groups.find(x=>x.id===s.groupId);
         const otherGroups = DB.groups.filter(x=>x.id!==s.groupId);
         openModal(`
-          <h3>نقل ${studentWord(s)}: ${s.name}</h3>
-          <p style="color:var(--muted);font-size:13px;margin-top:-6px;">من: <strong>${currentGroup?currentGroup.name:"—"}</strong></p>
-          <label>نقل إلى المجموعة</label>
+          <h3>${t("as_transfer_title")} ${studentWord(s)}: ${s.name}</h3>
+          <p style="color:var(--muted);font-size:13px;margin-top:-6px;">${t("as_from_label")} <strong>${currentGroup?currentGroup.name:"—"}</strong></p>
+          <label>${t("as_transfer_to_group")}</label>
           <select id="mTransferGroup">
-            ${otherGroups.map(gr=>`<option value="${gr.id}">${gr.name} (${gr.groupType||"مختلط"})</option>`).join("") || `<option value="">لا توجد مجموعات أخرى</option>`}
+            ${otherGroups.map(gr=>`<option value="${gr.id}">${gr.name} (${tStatus(gr.groupType||"مختلط")})</option>`).join("") || `<option value="">${t("as_no_other_groups")}</option>`}
           </select>
           <div id="mTransferMsg"></div>
           <div class="row" style="justify-content:flex-end;margin-top:16px;">
-            <button class="btn-outline btn-sm" id="mTransferCancel">إلغاء</button>
-            <button class="btn-green btn-sm" id="mTransferSave">نقل</button>
+            <button class="btn-outline btn-sm" id="mTransferCancel">${t("ag_cancel")}</button>
+            <button class="btn-green btn-sm" id="mTransferSave">${t("as_transfer_btn")}</button>
           </div>`);
         document.getElementById("mTransferCancel").onclick = closeModal;
         document.getElementById("mTransferSave").onclick = () => {
           const newGid = document.getElementById("mTransferGroup").value;
           const msg = document.getElementById("mTransferMsg");
-          if(!newGid){ msg.innerHTML = `<div class="msg err">اختر مجموعة</div>`; return; }
+          if(!newGid){ msg.innerHTML = `<div class="msg err">${t("as_err_choose_group2")}</div>`; return; }
           const newGroup = DB.groups.find(x=>x.id===newGid);
-          if(newGroup.groupType==="ذكر" && s.gender==="أنثى"){ msg.innerHTML = `<div class="msg err">هذه مجموعة ذكر فقط — لا يمكن نقل طالبة إليها</div>`; return; }
-          if(newGroup.groupType==="أنثى" && s.gender!=="أنثى"){ msg.innerHTML = `<div class="msg err">هذه مجموعة أنثى فقط — لا يمكن نقل طالب إليها</div>`; return; }
+          if(newGroup.groupType==="ذكر" && s.gender==="أنثى"){ msg.innerHTML = `<div class="msg err">${t("as_err_male_only")}</div>`; return; }
+          if(newGroup.groupType==="أنثى" && s.gender!=="أنثى"){ msg.innerHTML = `<div class="msg err">${t("as_err_female_only")}</div>`; return; }
 
           const doTransfer = () => {
             const oldGroupId = s.groupId;
@@ -2249,7 +2421,7 @@ function renderAdminStudents(c){
             saveDB(DB);
             closeModal(); drawStudentsTable();
           };
-          showConfirm(`نقل ${s.name} إلى "${newGroup.name}"؟ سيتم إشعار معلمي المجموعتين.`, doTransfer);
+          showConfirm(`${t("as_transfer_title")} ${s.name} → "${newGroup.name}"؟ ${t("as_confirm_transfer")}`, doTransfer);
         };
       };
     });
@@ -2258,18 +2430,18 @@ function renderAdminStudents(c){
         const s = DB.students.find(x=>x.id===btn.dataset.statusStud);
         const currentStatus = s.status || "نشط";
         openModal(`
-          <h3>تغيير حالة ${studentWord(s)}: ${s.name}</h3>
-          <label>الحالة</label>
+          <h3>${t("as_change_status_title")} ${studentWord(s)}: ${s.name}</h3>
+          <label>${t("as_status_label")}</label>
           <select id="mStatus">
-            <option value="نشط" ${currentStatus==="نشط"?"selected":""}>نشط</option>
-            <option value="موقوف" ${currentStatus==="موقوف"?"selected":""}>موقوف</option>
-            <option value="قيد الانتظار" ${currentStatus==="قيد الانتظار"?"selected":""}>قيد الانتظار</option>
+            <option value="نشط" ${currentStatus==="نشط"?"selected":""}>${tStatus("نشط")}</option>
+            <option value="موقوف" ${currentStatus==="موقوف"?"selected":""}>${tStatus("موقوف")}</option>
+            <option value="قيد الانتظار" ${currentStatus==="قيد الانتظار"?"selected":""}>${tStatus("قيد الانتظار")}</option>
           </select>
-          <label>سبب (اختياري — سيُرسل للمعلم/ة)</label>
-          <input id="mStatusReason" placeholder="مثال: عدم دفع الرسوم، مشكلة إدارية...">
+          <label>${t("as_reason_optional")}</label>
+          <input id="mStatusReason" placeholder="${t("as_reason_placeholder")}">
           <div class="row" style="justify-content:flex-end;margin-top:16px;">
-            <button class="btn-outline btn-sm" id="mStatusCancel">إلغاء</button>
-            <button class="btn-green btn-sm" id="mStatusSave">حفظ</button>
+            <button class="btn-outline btn-sm" id="mStatusCancel">${t("ag_cancel")}</button>
+            <button class="btn-green btn-sm" id="mStatusSave">${t("ag_save")}</button>
           </div>`);
         document.getElementById("mStatusCancel").onclick = closeModal;
         document.getElementById("mStatusSave").onclick = () => {
