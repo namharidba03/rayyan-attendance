@@ -21,8 +21,8 @@
   .card h2{margin-top:0;font-size:16px;color:var(--green-d);border-bottom:2px solid var(--gold);padding-bottom:8px;}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
   label{font-size:13px;font-weight:bold;color:var(--muted);display:block;margin-bottom:4px;}
-  input,select{padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:#fff;}
-  input:focus,select:focus{outline:2px solid var(--green);border-color:var(--green);}
+  input,select,textarea{padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:#fff;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--green);border-color:var(--green);}
   button{cursor:pointer;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:bold;font-family:inherit;transition:.15s;}
   .btn-green{background:var(--green);color:#fff;} .btn-green:hover{background:var(--green-d);}
   .btn-gold{background:var(--gold);color:#fff;} .btn-gold:hover{background:var(--gold-d);}
@@ -140,6 +140,7 @@
     .row > div{width:100%;}
     .row input, .row select{width:100%;}
     .row > button{width:100%;}
+    input,select,textarea{font-size:16px;}
     table{font-size:12px;}
     .card{overflow-x:auto;-webkit-overflow-scrolling:touch;}
     th, td{padding:6px 5px;}
@@ -150,16 +151,24 @@
     .mbtn{width:38px;height:36px;font-size:14px;}
     .login-card{width:100%;max-width:340px;}
     .modal-box{padding:16px;max-width:94vw;}
+    .modal-box input, .modal-box select, .modal-box textarea{font-size:16px;}
     .badge{font-size:11px;padding:3px 10px;}
     .tab{padding:8px 12px;font-size:12.5px;}
     .name-cell{white-space:nowrap;}
     .admin-layout{flex-direction:column;}
     .admin-sidebar{width:100%;flex-direction:row;overflow-x:auto;overflow-y:hidden;max-height:none;position:static;gap:6px;}
     .admin-sidebar .tab{white-space:nowrap;flex:0 0 auto;text-align:center;}
+    .role-btns{flex-direction:column;gap:8px;}
+    .role-btns button{padding:13px;}
+    .ac-list{max-height:160px;}
+    .logout{padding:7px 10px;font-size:12px;}
+    button{min-height:38px;}
+    .btn-sm{min-height:30px;}
   }
   @media (max-width: 420px){
     .stat{min-width:100%;}
     header.top h1{font-size:14.5px;}
+    .admin-sidebar .tab{padding:7px 10px;font-size:12px;}
   }
   .modal-overlay{position:fixed;inset:0;background:rgba(20,30,25,.55);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;}
   .modal-box{background:#fff;border-radius:12px;padding:22px;max-width:440px;width:100%;box-shadow:0 10px 30px rgba(0,0,0,.25);max-height:90vh;overflow:auto;}
