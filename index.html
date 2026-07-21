@@ -174,8 +174,17 @@
     .tab{padding:8px 12px;font-size:12.5px;}
     .name-cell{white-space:nowrap;}
     .admin-layout{flex-direction:column;}
-    .admin-sidebar{width:100%;flex-direction:row;flex-wrap:wrap;overflow-x:visible;overflow-y:visible;max-height:none;position:static;gap:5px;justify-content:flex-start;padding:8px;}
-    .admin-sidebar .tab{white-space:nowrap;flex:0 1 auto;text-align:center;padding:6px 10px;font-size:11.5px;}
+    .admin-sidebar{width:100%;flex-direction:column;flex-wrap:nowrap;overflow-x:hidden;overflow-y:auto;max-height:180px;position:static;gap:4px;justify-content:flex-start;padding:8px;border-radius:10px;-webkit-overflow-scrolling:touch;
+      background:
+        linear-gradient(#fff 30%, rgba(255,255,255,0)) center top,
+        linear-gradient(rgba(255,255,255,0), #fff 70%) center bottom,
+        radial-gradient(farthest-side at 50% 0, rgba(0,0,0,.15), rgba(0,0,0,0)) center top,
+        radial-gradient(farthest-side at 50% 100%, rgba(0,0,0,.15), rgba(0,0,0,0)) center bottom;
+      background-repeat:no-repeat;
+      background-size:100% 24px, 100% 24px, 100% 8px, 100% 8px;
+      background-attachment:local, local, scroll, scroll;
+    }
+    .admin-sidebar .tab{white-space:nowrap;flex:0 0 auto;text-align:right;width:100%;padding:9px 12px;font-size:12.5px;}
     .role-btns{flex-wrap:wrap;gap:8px;}
     .role-btns button{flex:1 1 46%;padding:13px;}
     .ac-list{max-height:160px;}
