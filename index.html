@@ -505,7 +505,7 @@ const I18N = {
     role_admin: "🛡️ الإدارة",
     role_teacher: "📘 معلم/ة",
     role_parent: "👨‍👩‍👧 ولي الأمر / الطالب",
-    role_proctor: "🧑‍🏫 مراقب امتحان",
+    role_proctor: "🧑‍🏫 ممتحن",
     email_label: "البريد الإلكتروني",
     password_label: "كلمة السر",
     login_btn: "دخول",
@@ -1028,7 +1028,7 @@ const I18N = {
     role_admin: "🛡️ Administration",
     role_teacher: "📘 Enseignant(e)",
     role_parent: "👨‍👩‍👧 Parent / Élève",
-    role_proctor: "🧑‍🏫 Surveillant d'examen",
+    role_proctor: "🧑‍🏫 Examinateur",
     email_label: "E-mail",
     password_label: "Mot de passe",
     login_btn: "Connexion",
@@ -1549,7 +1549,7 @@ function render(){
     const s = PARENT_STATE ? PARENT_STATE.students.find(x=>x.id===SESSION.studentId) : null;
     badge.textContent = "ولي أمر — " + (s?.name || "");
   } else if(SESSION.role === "proctor"){
-    badge.textContent = "مراقب امتحان — " + (PROCTOR_STATE?.title || "");
+    badge.textContent = "ممتحن — " + (PROCTOR_STATE?.title || "");
   } else {
     const g = DB.groups.find(g=>g.id===SESSION.groupId);
     badge.textContent = (g?.teacherName ? g.teacherName : "معلم/ة") + " — " + (g?.name || "");
@@ -1691,7 +1691,7 @@ let PROCTOR_STATE = null; // {examId, title, subject, date, maxScore, groupName,
 function showProctorLogin(){
   const f = document.getElementById("loginForm");
   f.innerHTML = `
-    <label>كود المراقب (6 أرقام)</label>
+    <label>كود الممتحن (6 أرقام)</label>
     <input inputmode="numeric" maxlength="6" id="proctorCodeInput" style="width:100%;font-size:20px;text-align:center;letter-spacing:4px;" placeholder="------">
     <button class="btn-green" style="width:100%;margin-top:10px;" id="proctorGo">دخول</button>
     <p style="color:var(--muted);font-size:11px;margin-top:8px;">احصل على الكود من إدارة المركز — الكود خاص بامتحان واحد فقط.</p>
@@ -3111,7 +3111,7 @@ function renderAdminExams(c){
         <td>${resultCount}/${studCount}</td>
         <td>${isOfficial ? (ex.published ? '<span style="color:var(--present);font-weight:bold;font-size:12px;">📢 منشورة</span>' : '<span style="color:var(--error);font-weight:bold;font-size:12px;">🔒 غير منشورة</span>') : '<span style="color:var(--muted);font-size:12px;">—</span>'}</td>
         <td><button class="btn-outline btn-sm" data-enter-exam="${ex.id}">📝 إدخال النتائج</button></td>
-        <td>${isOfficial ? `<button class="btn-outline btn-sm" data-proctor-exam="${ex.id}">🔑 ${ex.proctorCode?'كود المراقب':'إنشاء كود'}</button>` : ""}</td>
+        <td>${isOfficial ? `<button class="btn-outline btn-sm" data-proctor-exam="${ex.id}">🔑 ${ex.proctorCode?'كود الممتحن':'إنشاء كود'}</button>` : ""}</td>
         <td>${isOfficial && !ex.published ? `<button class="btn-green btn-sm" data-publish-exam="${ex.id}">📢 نشر النتائج</button>` : ""}</td>
         <td><button class="btn-danger btn-sm" data-del-exam="${ex.id}">حذف</button></td>
       </tr>`;
@@ -3120,7 +3120,7 @@ function renderAdminExams(c){
       <div class="card">
         <h2>سجل الامتحانات</h2>
         <table>
-          <tr><th>العنوان</th><th>النوع</th><th>المجموعة</th><th>التاريخ</th><th>النتائج المدخلة</th><th>الحالة</th><th>إدخال</th><th>مراقب</th><th>نشر</th><th>حذف</th></tr>
+          <tr><th>العنوان</th><th>النوع</th><th>المجموعة</th><th>التاريخ</th><th>النتائج المدخلة</th><th>الحالة</th><th>إدخال</th><th>ممتحن</th><th>نشر</th><th>حذف</th></tr>
           ${rows || `<tr><td colspan="10" style="color:var(--muted)">لا توجد امتحانات بعد</td></tr>`}
         </table>
       </div>`;
@@ -3167,7 +3167,7 @@ function renderAdminExams(c){
     const g = DB.groups.find(x=>x.id===ex.groupId);
     const studs = DB.students.filter(s=>s.groupId===ex.groupId);
     openModal(`
-      <h3>🔑 كود المراقب: ${ex.title}</h3>
+      <h3>🔑 كود الممتحن: ${ex.title}</h3>
       <p style="color:var(--muted);font-size:13px;">هذا الكود يسمح لأي شخص (حتى لو لم يكن معلماً في المركز) بإدخال نتائج هذا الامتحان فقط لطلاب مجموعة "${g?g.name:''}" — لا يمكنه رؤية أي شيء آخر.</p>
       ${ex.proctorCode ? `
         <p style="font-size:26px;font-weight:bold;color:var(--green-d);text-align:center;background:#F2F7F3;border-radius:8px;padding:12px;margin:10px 0;">${ex.proctorCode}</p>
