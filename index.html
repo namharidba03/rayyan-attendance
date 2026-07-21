@@ -1093,6 +1093,19 @@ function setLang(lang){
   localStorage.setItem("rayyan_lang", lang);
   render();
 }
+function enterSubmits(inputIds, btnId){
+  inputIds.forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.onkeydown = (e) => {
+      if(e.key === "Enter"){
+        e.preventDefault();
+        const btn = document.getElementById(btnId);
+        if(btn && !btn.disabled) btn.click();
+      }
+    };
+  });
+}
 const STATUS_I18N = {
   "مكتمل ✅": {ar:"مكتمل ✅", fr:"Terminé ✅"},
   "مكتمل": {ar:"مكتمل", fr:"Terminé"},
@@ -1617,6 +1630,7 @@ function showAdminLogin(){
     e.preventDefault();
     showPasswordRecovery();
   };
+  enterSubmits(["adminUser","adminPass"], "adminGo");
   // Move cursor straight to password field if email is already remembered
   if(savedEmail){ setTimeout(()=>{ const p = document.getElementById("adminPass"); if(p) p.focus(); }, 50); }
 
@@ -1696,6 +1710,7 @@ function showProctorLogin(){
     <button class="btn-green" style="width:100%;margin-top:10px;" id="proctorGo">دخول</button>
     <p style="color:var(--muted);font-size:11px;margin-top:8px;">احصل على الكود من إدارة المركز — الكود خاص بامتحان واحد فقط.</p>
     <div id="loginMsg"></div>`;
+  enterSubmits(["proctorCodeInput"], "proctorGo");
   document.getElementById("proctorGo").onclick = async () => {
     const code = document.getElementById("proctorCodeInput").value.trim();
     const msg = document.getElementById("loginMsg");
@@ -1774,6 +1789,7 @@ function showParentLogin(){
     <button class="btn-green" style="width:100%;margin-top:10px;" id="parentGo">${t("login_btn")}</button>
     <p style="color:var(--muted);font-size:11px;margin-top:8px;">${t("pin_help")}</p>
     <div id="loginMsg"></div>`;
+  enterSubmits(["parentPhone","parentPin"], "parentGo");
   document.getElementById("parentGo").onclick = async () => {
     const phone = document.getElementById("parentPhone").value.trim().replace(/[^0-9]/g,"");
     const pin = document.getElementById("parentPin").value.trim();
@@ -1867,6 +1883,7 @@ function showTeacherLogin(){
     <input type="password" id="tPass" style="width:100%" placeholder="••••••">
     <button class="btn-gold" style="width:100%;margin-top:10px;" id="tGo">دخول</button>
     <div id="loginMsg"></div>`;
+  enterSubmits(["tPass"], "tGo");
   document.getElementById("tGo").onclick = () => {
     const gid = document.getElementById("tGroup").value;
     const grp = DB.groups.find(g=>g.id===gid);
