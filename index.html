@@ -1413,6 +1413,9 @@ function deleteExamResult(resultObj){
 }
 function allExams(){ return Object.values(DB.exams||{}); }
 function examById(id){ return (DB.exams||{})[id]; }
+function examGroupIds(ex){ return ex.groupIds || (ex.groupId ? [ex.groupId] : []); }
+function examStudents(ex){ const gids = examGroupIds(ex); return DB.students.filter(s=>gids.includes(s.groupId)); }
+function examGroupNames(ex){ return examGroupIds(ex).map(gid=>{ const g = DB.groups.find(x=>x.id===gid); return g?g.name:null; }).filter(Boolean).join("، "); }
 function addExam(examObj){ if(!DB.exams) DB.exams = {}; DB.exams[examObj.id] = examObj; }
 function deleteExamById(id){ if(DB.exams) delete DB.exams[id]; }
 
@@ -3080,11 +3083,11 @@ function renderAdminExams(c){
             <option value="فصلي">📘 امتحان الفصل</option>
           </select>
         </div>
-        <div><label>المجموعة</label>
-          <select id="examGroup">
-            <option value="">اختر المجموعة...</option>
-            ${DB.groups.map(g=>`<option value="${g.id}">${g.name}</option>`).join("")}
-          </select>
+        <div style="flex:1 1 100%;">
+          <label>المجموعات المشمولة <span style="color:var(--muted);font-weight:normal;font-size:12px;">(يمكن اختيار أكثر من مجموعة — مثلاً مجموعتان تدرسان معاً وتخضعان لنفس الامتحان)</span></label>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;border:1px solid var(--border);border-radius:8px;padding:10px;">
+            ${DB.groups.map(g=>`<label style="font-weight:normal;display:flex;align-items:center;gap:5px;"><input type="checkbox" class="examGroupChk" value="${g.id}"> ${g.name}</label>`).join("") || `<span style="color:var(--muted);font-size:13px;">لا توجد مجموعات بعد</span>`}
+          </div>
         </div>
         <div><label>المادة/الموضوع</label><input id="examSubject" placeholder="مثال: حفظ القرآن"></div>
         <div><label>التاريخ</label><input type="date" id="examDate" value="${todayStr()}"></div>
@@ -3099,31 +3102,32 @@ function renderAdminExams(c){
   document.getElementById("addExamBtn").onclick = () => {
     const title = document.getElementById("examTitle").value.trim();
     const type = document.getElementById("examType").value;
-    const groupId = document.getElementById("examGroup").value;
+    const groupIds = Array.from(document.querySelectorAll(".examGroupChk:checked")).map(el=>el.value);
     const subject = document.getElementById("examSubject").value.trim();
     const date = document.getElementById("examDate").value;
     const maxScore = parseInt(document.getElementById("examMaxScore").value) || 100;
     const msg = document.getElementById("examMsg");
-    if(!title || !groupId){ msg.innerHTML = `<div class="msg err">أدخل العنوان واختر المجموعة</div>`; return; }
-    const exam = {id:uid(), title, type, groupId, subject, date, maxScore, createdBy:"admin", createdAt:new Date().toISOString(), published: type==="فصلي"};
+    if(!title || !groupIds.length){ msg.innerHTML = `<div class="msg err">أدخل العنوان واختر مجموعة واحدة على الأقل</div>`; return; }
+    const exam = {id:uid(), title, type, groupIds, subject, date, maxScore, createdBy:"admin", createdAt:new Date().toISOString(), published: type==="فصلي"};
     addExam(exam);
     saveDB(DB);
     document.getElementById("examTitle").value = "";
     document.getElementById("examSubject").value = "";
+    document.querySelectorAll(".examGroupChk:checked").forEach(el=>el.checked=false);
     msg.innerHTML = `<div class="msg ok">تم إنشاء الامتحان</div>`;
     drawExamsList();
   };
 
   function drawExamsList(){
     const rows = allExams().sort((a,b)=>b.date.localeCompare(a.date)).map(ex=>{
-      const g = DB.groups.find(x=>x.id===ex.groupId);
+      const groupNames = examGroupNames(ex);
       const resultCount = allExamResults().filter(r=>r.examId===ex.id).length;
-      const studCount = DB.students.filter(s=>s.groupId===ex.groupId).length;
+      const studCount = examStudents(ex).length;
       const isOfficial = ex.type === "إداري";
       return `<tr>
         <td class="name-cell">${ex.title}</td>
         <td><span class="badge" style="background:${ex.type==='إداري'?'var(--gold)':'var(--noquran)'};font-size:11px;">${ex.type}</span></td>
-        <td>${g?g.name:"—"}</td>
+        <td>${groupNames||"—"}</td>
         <td>${ex.date}</td>
         <td>${resultCount}/${studCount}</td>
         <td>${isOfficial ? (ex.published ? '<span style="color:var(--present);font-weight:bold;font-size:12px;">📢 منشورة</span>' : '<span style="color:var(--error);font-weight:bold;font-size:12px;">🔒 غير منشورة</span>') : '<span style="color:var(--muted);font-size:12px;">—</span>'}</td>
@@ -3181,11 +3185,11 @@ function renderAdminExams(c){
 
   function openProctorModal(examId){
     const ex = examById(examId);
-    const g = DB.groups.find(x=>x.id===ex.groupId);
-    const studs = DB.students.filter(s=>s.groupId===ex.groupId);
+    const groupNames = examGroupNames(ex);
+    const studs = examStudents(ex);
     openModal(`
       <h3>🔑 كود الممتحن: ${ex.title}</h3>
-      <p style="color:var(--muted);font-size:13px;">هذا الكود يسمح لأي شخص (حتى لو لم يكن معلماً في المركز) بإدخال نتائج هذا الامتحان فقط لطلاب مجموعة "${g?g.name:''}" — لا يمكنه رؤية أي شيء آخر.</p>
+      <p style="color:var(--muted);font-size:13px;">هذا الكود يسمح لأي شخص (حتى لو لم يكن معلماً في المركز) بإدخال نتائج هذا الامتحان فقط لطلاب مجموعة/مجموعات "${groupNames}" — لا يمكنه رؤية أي شيء آخر.</p>
       ${ex.proctorCode ? `
         <p style="font-size:26px;font-weight:bold;color:var(--green-d);text-align:center;background:#F2F7F3;border-radius:8px;padding:12px;margin:10px 0;">${ex.proctorCode}</p>
         <div class="row" style="justify-content:center;">
@@ -3230,24 +3234,26 @@ function renderAdminExams(c){
   function drawResultsEntry(examId){
     const ex = examById(examId);
     if(!ex) return;
-    const studs = DB.students.filter(s=>s.groupId===ex.groupId);
+    const studs = examStudents(ex).slice().sort((a,b)=>(a.groupName||"").localeCompare(b.groupName||"") || a.code.localeCompare(b.code));
+    const multiGroup = examGroupIds(ex).length > 1;
     document.getElementById("examResultsWrap").innerHTML = `
       <div class="card">
-        <h2>📝 نتائج: ${ex.title} <span style="font-size:12px;color:var(--muted);font-weight:normal;">(${ex.date} — من ${ex.maxScore} درجة)</span></h2>
+        <h2>📝 نتائج: ${ex.title} <span style="font-size:12px;color:var(--muted);font-weight:normal;">(${ex.date} — من ${ex.maxScore} درجة${multiGroup?' — '+examGroupNames(ex):''})</span></h2>
         <table>
-          <tr><th>الرقم</th><th>الاسم</th><th>الدرجة</th><th>النسبة</th><th>التقدير</th><th>التوصية</th><th>حفظ</th></tr>
+          <tr><th>الرقم</th><th>الاسم</th>${multiGroup?'<th>المجموعة</th>':''}<th>الدرجة</th><th>النسبة</th><th>التقدير</th><th>التوصية</th><th>حفظ</th></tr>
           ${studs.map(s=>{
             const existing = resultsFor(s.id).find(r=>r.examId===examId);
             return `<tr>
               <td style="font-weight:bold;color:var(--green-d)">${s.code}</td>
               <td class="name-cell">${s.name}</td>
+              ${multiGroup?`<td style="color:var(--muted);font-size:12px;">${s.groupName||"—"}</td>`:''}
               <td><input type="number" data-score="${s.id}" value="${existing?existing.score:''}" style="width:70px;" min="0" max="${ex.maxScore}"></td>
               <td><span data-pct="${s.id}">${existing?existing.percentage+'%':'—'}</span></td>
               <td><span data-grade="${s.id}" style="color:${existing?gradeColor(existing.grade):'var(--muted)'};font-weight:bold;">${existing?existing.grade:'—'}</span></td>
               <td><input data-rec="${s.id}" value="${existing?(existing.recommendation||'').replace(/"/g,'&quot;'):''}" placeholder="اختياري..." style="width:160px;"></td>
               <td><button class="btn-green btn-sm" data-save-result="${s.id}">حفظ</button></td>
             </tr>`;
-          }).join("") || `<tr><td colspan="7" style="color:var(--muted)">لا يوجد طلاب في هذه المجموعة</td></tr>`}
+          }).join("") || `<tr><td colspan="${multiGroup?8:7}" style="color:var(--muted)">لا يوجد طلاب في هذه المجموعة/المجموعات</td></tr>`}
         </table>
         <div id="resultsSaveMsg"></div>
       </div>`;
