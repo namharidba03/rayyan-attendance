@@ -3078,10 +3078,8 @@ function renderAdminExams(c){
       <div class="row">
         <div><label>عنوان الامتحان</label><input id="examTitle" placeholder="مثال: اختبار حفظ جزء عم"></div>
         <div><label>النوع</label>
-          <select id="examType">
-            <option value="إداري">🏛️ امتحان إداري (رسمي)</option>
-            <option value="فصلي">📘 امتحان الفصل</option>
-          </select>
+          <input value="🏛️ امتحان إداري (رسمي)" disabled style="background:#F2F2F2;color:var(--muted);">
+          <p style="color:var(--muted);font-size:11px;margin:4px 0 0;">امتحان الفصل (📘) ينشئه المعلم/ة من لوحته الخاصة.</p>
         </div>
         <div style="flex:1 1 100%;">
           <label>المجموعات المشمولة <span style="color:var(--muted);font-weight:normal;font-size:12px;">(يمكن اختيار أكثر من مجموعة — مثلاً مجموعتان تدرسان معاً وتخضعان لنفس الامتحان)</span></label>
@@ -3101,7 +3099,7 @@ function renderAdminExams(c){
 
   document.getElementById("addExamBtn").onclick = () => {
     const title = document.getElementById("examTitle").value.trim();
-    const type = document.getElementById("examType").value;
+    const type = "إداري";
     const groupIds = Array.from(document.querySelectorAll(".examGroupChk:checked")).map(el=>el.value);
     const subject = document.getElementById("examSubject").value.trim();
     const date = document.getElementById("examDate").value;
@@ -3236,13 +3234,26 @@ function renderAdminExams(c){
     if(!ex) return;
     const studs = examStudents(ex).slice().sort((a,b)=>(a.groupName||"").localeCompare(b.groupName||"") || a.code.localeCompare(b.code));
     const multiGroup = examGroupIds(ex).length > 1;
+    const readOnly = ex.type === "فصلي"; // Admin can only view class exams entered by teachers, not edit them
     document.getElementById("examResultsWrap").innerHTML = `
       <div class="card">
         <h2>📝 نتائج: ${ex.title} <span style="font-size:12px;color:var(--muted);font-weight:normal;">(${ex.date} — من ${ex.maxScore} درجة${multiGroup?' — '+examGroupNames(ex):''})</span></h2>
+        ${readOnly ? `<p style="color:var(--muted);font-size:12px;background:#F7F7F7;padding:6px 10px;border-radius:6px;">📘 هذا امتحان فصلي — الإدخال والتعديل من صلاحية المعلم/ة فقط، الإدارة تعرض النتائج للاطلاع.</p>` : ""}
         <table>
-          <tr><th>الرقم</th><th>الاسم</th>${multiGroup?'<th>المجموعة</th>':''}<th>الدرجة</th><th>النسبة</th><th>التقدير</th><th>التوصية</th><th>حفظ</th></tr>
+          <tr><th>الرقم</th><th>الاسم</th>${multiGroup?'<th>المجموعة</th>':''}<th>الدرجة</th><th>النسبة</th><th>التقدير</th><th>التوصية</th>${readOnly?'':'<th>حفظ</th>'}</tr>
           ${studs.map(s=>{
             const existing = resultsFor(s.id).find(r=>r.examId===examId);
+            if(readOnly){
+              return `<tr>
+                <td style="font-weight:bold;color:var(--green-d)">${s.code}</td>
+                <td class="name-cell">${s.name}</td>
+                ${multiGroup?`<td style="color:var(--muted);font-size:12px;">${s.groupName||"—"}</td>`:''}
+                <td>${existing?existing.score+'/'+ex.maxScore:'—'}</td>
+                <td>${existing?existing.percentage+'%':'—'}</td>
+                <td style="color:${existing?gradeColor(existing.grade):'var(--muted)'};font-weight:bold;">${existing?existing.grade:'—'}</td>
+                <td style="color:var(--muted);font-size:12px;">${existing?(existing.recommendation||"—"):"—"}</td>
+              </tr>`;
+            }
             return `<tr>
               <td style="font-weight:bold;color:var(--green-d)">${s.code}</td>
               <td class="name-cell">${s.name}</td>
@@ -3258,6 +3269,7 @@ function renderAdminExams(c){
         <div id="resultsSaveMsg"></div>
       </div>`;
 
+    if(readOnly) return;
     document.querySelectorAll("[data-save-result]").forEach(btn=>{
       btn.onclick = () => {
         const sid = btn.dataset.saveResult;
@@ -5305,8 +5317,11 @@ function renderTeacherExam(c, g, studs){
       const examId = btn.dataset.tEnterExam;
       const ex = examById(examId);
       document.getElementById("tExamResultsWrap").innerHTML = `
+        <div class="row" style="justify-content:flex-end;margin-top:10px;">
+          <button class="btn-gold btn-sm" id="tBoardBtn">📋 لوحة نتائج الفصل</button>
+        </div>
         <table style="margin-top:10px;">
-          <tr><th>${t("t_number_col")}</th><th>${t("t_name_col")}</th><th>${t("score_col")}</th><th>${t("pct_col")}</th><th>${t("t_grade_col")}</th><th>${t("t_save_btn")}</th></tr>
+          <tr><th>${t("t_number_col")}</th><th>${t("t_name_col")}</th><th>${t("score_col")}</th><th>${t("pct_col")}</th><th>${t("t_grade_col")}</th><th>${t("t_save_btn")}</th><th>WhatsApp</th></tr>
           ${studs.map(s=>{
             const existing = resultsFor(s.id).find(r=>r.examId===examId);
             return `<tr>
@@ -5316,10 +5331,12 @@ function renderTeacherExam(c, g, studs){
               <td><span data-tpct="${s.id}">${existing?existing.percentage+'%':'—'}</span></td>
               <td><span data-tgrade="${s.id}" style="color:${existing?gradeColor(existing.grade):'var(--muted)'};font-weight:bold;">${existing?existing.grade:'—'}</span></td>
               <td><button class="btn-green btn-sm" data-t-save-result="${s.id}">${t("t_save_btn")}</button></td>
+              <td>${existing && s.phone ? `<a class="btn-outline btn-sm" style="text-decoration:none;" target="_blank" href="https://wa.me/${s.phone.replace(/[^0-9]/g,"")}?text=${encodeURIComponent(`السلام عليكم،\nنتيجة ${studentWord(s)} ${s.name} في اختبار "${ex.title}" (${ex.date}):\nالدرجة: ${existing.score}/${ex.maxScore} (${existing.percentage}%)\nالتقدير: ${existing.grade}${existing.recommendation?'\nملاحظة: '+existing.recommendation:''}\n— ${g.name}، مركز الريان`)}">📲</a>`:'—'}</td>
             </tr>`;
           }).join("")}
         </table>
         <div id="tResultsSaveMsg"></div>`;
+      document.getElementById("tBoardBtn").onclick = () => openClassResultsBoard(ex, studs);
       document.querySelectorAll("[data-t-save-result]").forEach(sbtn=>{
         sbtn.onclick = () => {
           const sid = sbtn.dataset.tSaveResult;
@@ -5337,14 +5354,41 @@ function renderTeacherExam(c, g, studs){
             enteredAt: new Date().toISOString()
           });
           saveDB(DB);
-          document.querySelector(`[data-tpct="${sid}"]`).textContent = percentage+"%";
-          const gEl = document.querySelector(`[data-tgrade="${sid}"]`);
-          gEl.textContent = grade; gEl.style.color = gradeColor(grade);
           rmsg.innerHTML = `<div class="msg ok">${t("t_result_saved")} ${s.name}</div>`;
+          btn.onclick(); // redraw the row so the WhatsApp link and grade appear/update
         };
       });
     };
   });
+}
+
+function openClassResultsBoard(ex, studs){
+  const rows = studs.map(s=>{
+    const r = resultsFor(s.id).find(x=>x.examId===ex.id);
+    return {s, r};
+  }).sort((a,b)=> (b.r?b.r.percentage:-1) - (a.r?a.r.percentage:-1));
+  const boardText = `📋 لوحة نتائج: ${ex.title}\n📅 ${ex.date} — من ${ex.maxScore} درجة\n\n` +
+    rows.map((row,i)=> row.r ? `${i+1}. ${row.s.name}: ${row.r.score}/${ex.maxScore} (${row.r.percentage}%) — ${row.r.grade}` : `${i+1}. ${row.s.name}: —`).join("\n");
+  const waLink = `https://wa.me/?text=${encodeURIComponent(boardText)}`;
+  openModal(`
+    <h3>📋 لوحة نتائج الفصل: ${ex.title}</h3>
+    <table>
+      <tr><th>#</th><th>الاسم</th><th>الدرجة</th><th>النسبة</th><th>التقدير</th></tr>
+      ${rows.map((row,i)=>`<tr>
+        <td>${i+1}</td>
+        <td class="name-cell">${row.s.name}</td>
+        <td>${row.r?row.r.score+'/'+ex.maxScore:'—'}</td>
+        <td>${row.r?row.r.percentage+'%':'—'}</td>
+        <td style="color:${row.r?gradeColor(row.r.grade):'var(--muted)'};font-weight:bold;">${row.r?row.r.grade:'—'}</td>
+      </tr>`).join("")}
+    </table>
+    <div class="row" style="justify-content:flex-end;margin-top:16px;">
+      <button class="btn-outline btn-sm" id="boardClose">إغلاق</button>
+      <a class="btn-green btn-sm" style="text-decoration:none;" target="_blank" href="${waLink}">📲 مشاركة اللوحة كاملة عبر واتساب</a>
+      <button class="btn-gold btn-sm" id="boardPrint">🖨️ طباعة</button>
+    </div>`);
+  document.getElementById("boardClose").onclick = closeModal;
+  document.getElementById("boardPrint").onclick = () => window.print();
 }
 
 function renderTeacherOfficial(c, g, studs){
